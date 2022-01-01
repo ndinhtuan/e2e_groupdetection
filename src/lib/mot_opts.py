@@ -219,7 +219,7 @@ class opts(object):
     opt.input_res = max(opt.input_h, opt.input_w)
     opt.output_res = max(opt.output_h, opt.output_w)
 
-    if opt.task == 'group':
+    if opt.task == 'mot':
       opt.heads = {'hm': opt.num_classes,
                    'wh': 2 if not opt.ltrb else 4,
                    'id': opt.reid_dim}
@@ -236,7 +236,7 @@ class opts(object):
 
   def init(self, args=''):
     default_dataset_info = {
-      'group': {'default_resolution': [608, 1088], 'num_classes': 1,
+      'mot': {'default_resolution': [608, 1088], 'num_classes': 1,
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'jde', 'nID': 14455},
     }

@@ -13,21 +13,24 @@ def gen_fformation_label(src_path, dst_path, config_file, ext="jpg"):
     if not os.path.isdir(dst_path):
         print("Cannot go to {}.".format(src_path))
 
-    if os.path.isdir("{}/{}".format(dst_path, label_folder)) or 
+    if os.path.isdir("{}/{}".format(dst_path, label_folder)) or \
             os.path.isdir("{}/{}".format(dst_path, img_folder)):
 
         print("Check image and label file in {}.".format(dst_path))
+    else:
+        os.makedirs("{}/{}".format(dst_path, label_folder))
+        os.makedirs("{}/{}".format(dst_path, img_folder))
 
     list_path_img = glob.glob("{}/*.{}".format(src_path, ext))
     
-    with open("{}/{}".format(dst_path, config_file)) as file_:
+    with open("{}/{}".format(dst_path, config_file), 'w') as file_:
 
         for path_img in list_path_img:
 
             name_file = path_img.split("/")[-1].split('.')[0]
             dst_img_path = "{}/{}/{}.{}".format(dst_path, img_folder, name_file, ext)
             dst_label_path = "{}/{}/{}.txt".format(dst_path, label_folder, name_file)
-            src_label_path = "{}/{}.txt".format(dst_path, name_file)
+            src_label_path = "{}/{}.txt".format(src_path, name_file)
             
             file_.write("{}\n".format(dst_img_path))
             shutil.copyfile(path_img, dst_img_path)
