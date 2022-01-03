@@ -8,10 +8,10 @@ class SimpleConcat(torch.nn.Module):
 
     def __init__(self, opt):
         super(SimpleConcat, self).__init__()
-        self.embed_dim = opt.embed_dim
+        self.embed_dim = 128#opt.embed_dim
 
         self.fc = torch.nn.Sequential(
-                torch.nn.Linear(2*128, 100),
+                torch.nn.Linear(2*self.embed_dim, 100),
                 torch.nn.ReLU(),
                 torch.nn.Linear(100, 50),
                 torch.nn.ReLU(),

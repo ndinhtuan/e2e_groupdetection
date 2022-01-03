@@ -1,7 +1,7 @@
 ==> torch version: 1.7.0
 ==> cudnn version: 7605
 ==> Cmd:
-['train.py', 'group', '--exp_id', 'crowdhuman_dla34', '--gpus', '0', '--batch_size', '8', '--load_model', '../models/ctdet_coco_dla_2x.pth', '--num_epochs', '60', '--lr_step', '50', '--data_cfg', '../src/lib/cfg/gta_salsa.json']
+['train.py', 'group', '--exp_id', 'crowdhuman_dla34', '--gpus', '0', '--batch_size', '8', '--num_epochs', '60', '--lr_step', '50', '--data_cfg', '../src/lib/cfg/gta_salsa.json']
 ==> Opt:
   K: 500
   arch: dla_34
@@ -33,7 +33,7 @@
   input_video: ../videos/MOT16-03.mp4
   input_w: 608
   keep_res: False
-  load_model: ../models/ctdet_coco_dla_2x.pth
+  load_model: 
   lr: 0.0001
   lr_step: [50]
   ltrb: True
@@ -43,7 +43,6 @@
   min_box_area: 100
   mse_loss: False
   multi_loss: uncertainty
-  nID: 2
   nms_thres: 0.4
   norm_wh: False
   not_cuda_benchmark: False

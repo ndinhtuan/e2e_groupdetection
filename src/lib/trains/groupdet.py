@@ -20,7 +20,7 @@ from .base_trainer import BaseTrainer
 
 
 class GroupDetLoss(torch.nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt, group_model):
         super(GroupDetLoss, self).__init__()
         self.crit = torch.nn.MSELoss() if opt.mse_loss else FocalLoss()
         self.crit_reg = RegL1Loss() if opt.reg_loss == 'l1' else \
@@ -30,17 +30,19 @@ class GroupDetLoss(torch.nn.Module):
                 RegWeightedL1Loss() if opt.cat_spec_wh else self.crit_reg
         self.opt = opt
         self.emb_dim = opt.reid_dim
-        self.nID = opt.nID
-        self.classifier = nn.Linear(self.emb_dim, self.nID)
+        #self.classifier = nn.Linear(self.emb_dim, self.nID)
+        self.group_model = group_model 
+
         if opt.id_loss == 'focal':
             torch.nn.init.normal_(self.classifier.weight, std=0.01)
             prior_prob = 0.01
             bias_value = -math.log((1 - prior_prob) / prior_prob)
             torch.nn.init.constant_(self.classifier.bias, bias_value)
         self.IDLoss = nn.CrossEntropyLoss(ignore_index=-1)
-        self.emb_scale = math.sqrt(2) * math.log(self.nID - 1)
         self.s_det = nn.Parameter(-1.85 * torch.ones(1))
         self.s_id = nn.Parameter(-1.05 * torch.ones(1))
+
+        self.number_sample_group_loss = 10
 
     def forward(self, outputs, batch):
         opt = self.opt
@@ -63,10 +65,24 @@ class GroupDetLoss(torch.nn.Module):
             if opt.id_weight > 0:
                 id_head = _tranpose_and_gather_feat(output['id'], batch['ind'])
                 id_head = id_head[batch['reg_mask'] > 0].contiguous()
-                id_head = self.emb_scale * F.normalize(id_head)
-                id_target = batch['ids'][batch['reg_mask'] > 0]
+                id_head =  F.normalize(id_head)
+                id_target = batch['fformation'][batch['reg_mask'] > 0]
 
-                id_output = self.classifier(id_head).contiguous()
+                #id_output = self.classifier(id_head).contiguous()
+                preds = torch.zeros(2*self.number_sample_group_loss)
+                labels = torch.zeros(2*self.number_sample_group_loss)
+                # positive sampling
+                pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
+                        self.number_sample_group_loss, True)
+                pos_pred = self.group_model(pos_embeds1, pos_embeds2)
+                preds[:self.number_sample_group_loss] = pos_pred
+                labels[:self.number_sample_group_loss] = torch.ones(self.number_sample_group_loss)
+                # negative sampling
+                neg_embeds1, neg_embeds2 = pair_sampling(id_head, id_target, \
+                        self.number_sample_group_loss, False)
+                neg_pred = self.group_model(neg_embeds1, neg_embeds2)
+                preds[self.number_sample_group_loss:] = neg_pred
+
                 if self.opt.id_loss == 'focal':
                     id_target_one_hot = id_output.new_zeros((id_head.size(0), self.nID)).scatter_(1,
                                                                                                   id_target.long().view(
@@ -75,7 +91,7 @@ class GroupDetLoss(torch.nn.Module):
                                                       alpha=0.25, gamma=2.0, reduction="sum"
                                                       ) / id_output.size(0)
                 else:
-                    id_loss += self.IDLoss(id_output, id_target)
+                    id_loss += self.IDLoss(preds, labels)
 
         det_loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + opt.off_weight * off_loss
         if opt.multi_loss == 'uncertainty':
@@ -90,12 +106,14 @@ class GroupDetLoss(torch.nn.Module):
 
 
 class GroupDetTrainer(BaseTrainer):
-    def __init__(self, opt, model, optimizer=None):
-        super(GroupDetTrainer, self).__init__(opt, model, optimizer=optimizer)
+    def __init__(self, opt, dict_model, optimizer=None):
+        self.main_model = dict_model["main_model"]
+        self.group_model = dict_model["group_model"]
+        super(GroupDetTrainer, self).__init__(opt, self.main_model, optimizer=optimizer)
 
     def _get_losses(self, opt):
         loss_states = ['loss', 'hm_loss', 'wh_loss', 'off_loss', 'id_loss']
-        loss = GroupDetLoss(opt)
+        loss = GroupDetLoss(opt, self.group_model)
         return loss_states, loss
 
     def save_result(self, output, batch, results):

@@ -358,6 +358,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
     num_classes = 1
 
     def __init__(self, opt, root, paths, img_size=(1088, 608), augment=False, transforms=None):
+
         self.opt = opt
         dataset_names = paths.keys()
         self.img_files = OrderedDict()
@@ -390,12 +391,6 @@ class JointDataset(LoadImagesAndLabels):  # for training
                     max_index = img_max
             self.tid_num[ds] = max_index + 1
 
-        last_index = 0
-        for i, (k, v) in enumerate(self.tid_num.items()):
-            self.tid_start_index[k] = last_index
-            last_index += v
-
-        self.nID = int(last_index + 1)
         self.nds = [len(x) for x in self.img_files.values()]
         self.cds = [sum(self.nds[:i]) for i in range(len(self.nds))]
         self.nF = sum(self.nds)
@@ -404,14 +399,6 @@ class JointDataset(LoadImagesAndLabels):  # for training
         self.max_objs = opt.K
         self.augment = augment
         self.transforms = transforms
-
-        print('=' * 80)
-        print('dataset summary')
-        print(self.tid_num)
-        print('total # identities:', self.nID)
-        print('start index')
-        print(self.tid_start_index)
-        print('=' * 80)
 
     def __getitem__(self, files_index):
 
@@ -424,9 +411,6 @@ class JointDataset(LoadImagesAndLabels):  # for training
         label_path = self.label_files[ds][files_index - start_index]
 
         imgs, labels, img_path, (input_h, input_w) = self.get_data(img_path, label_path)
-        for i, _ in enumerate(labels):
-            if labels[i, 1] > -1:
-                labels[i, 1] += self.tid_start_index[ds]
 
         output_h = imgs.shape[1] // self.opt.down_ratio
         output_w = imgs.shape[2] // self.opt.down_ratio
@@ -440,7 +424,6 @@ class JointDataset(LoadImagesAndLabels):  # for training
         reg = np.zeros((self.max_objs, 2), dtype=np.float32)
         ind = np.zeros((self.max_objs, ), dtype=np.int64)
         reg_mask = np.zeros((self.max_objs, ), dtype=np.uint8)
-        ids = np.zeros((self.max_objs, ), dtype=np.int64)
         bbox_xys = np.zeros((self.max_objs, 4), dtype=np.float32)
         # fformation group tensor
         fformation = np.zeros((self.max_objs,  ),  dtype=np.int64) # [1, 2, 0, 0, ..., 1, 2]
