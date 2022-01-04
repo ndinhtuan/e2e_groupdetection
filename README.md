@@ -18,3 +18,13 @@ cd DCNv2
 * In order to run the code for demos, you also need to install [ffmpeg](https://www.ffmpeg.org/).
 
 ## Data preparation
+
+```
+python src/gen_label_fformation.py
+```
+
+## Training
+
+```
+sh experiments/gta_dla34.sh
+```
