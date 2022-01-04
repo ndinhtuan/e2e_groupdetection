@@ -186,14 +186,16 @@ class LoadImagesAndLabels:  # for training
 
         # Load labels
         if os.path.isfile(label_path):
-            labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 19)
+            labels0 = np.loadtxt(label_path, dtype=np.float32)
+            labels0 = labels0.reshape(-1, 20)[:,:6]
+            #print("labels: ", labels0.shape); exit()
 
             # Normalized xywh to pixel xyxy format
-            labels = labels0.copy()[:, :5]
-            labels[:, 1] = ratio * w * (labels0[:, 1] - labels0[:, 3] / 2) + padw
-            labels[:, 2] = ratio * h * (labels0[:, 2] - labels0[:, 4] / 2) + padh
-            labels[:, 3] = ratio * w * (labels0[:, 3] + labels0[:, 3] / 2) + padw
-            labels[:, 4] = ratio * h * (labels0[:, 4] + labels0[:, 4] / 2) + padh
+            labels = labels0.copy()
+            labels[:, 2] = ratio * w * (labels0[:, 2] - labels0[:, 4] / 2) + padw
+            labels[:, 3] = ratio * h * (labels0[:, 3] - labels0[:, 5] / 2) + padh
+            labels[:, 4] = ratio * w * (labels0[:, 2] + labels0[:, 4] / 2) + padw
+            labels[:, 5] = ratio * h * (labels0[:, 3] + labels0[:, 5] / 2) + padh
         else:
             labels = np.array([])
 
@@ -216,24 +218,24 @@ class LoadImagesAndLabels:  # for training
         nL = len(labels)
         if nL > 0:
             # convert xyxy to xywh
-            labels[:, 1:5] = xyxy2xywh(labels[:, 1:5].copy())  # / height
-            labels[:, 1] /= width
-            labels[:, 2] /= height
-            labels[:, 3] /= width
-            labels[:, 4] /= height
+            labels[:, 2:6] = xyxy2xywh(labels[:, 2:6].copy())  # / height
+            labels[:, 2] /= width
+            labels[:, 3] /= height
+            labels[:, 4] /= width
+            labels[:, 5] /= height
         if self.augment:
             # random left-right flip
             lr_flip = True
             if lr_flip & (random.random() > 0.5):
                 img = np.fliplr(img)
                 if nL > 0:
-                    labels[:, 1] = 1 - labels[:, 1]
+                    labels[:, 2] = 1 - labels[:, 2]
 
         img = np.ascontiguousarray(img[:, :, ::-1])  # BGR to RGB
 
         if self.transforms is not None:
             img = self.transforms(img)
-
+    
         return img, labels, img_path, (h, w)
 
     def __len__(self):
@@ -400,6 +402,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
         self.augment = augment
         self.transforms = transforms
 
+
     def __getitem__(self, files_index):
 
         for i, c in enumerate(self.cds):
@@ -431,7 +434,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
         draw_gaussian = draw_msra_gaussian if self.opt.mse_loss else draw_umich_gaussian
         for k in range(min(num_objs, self.max_objs)):
             label = labels[k]
-            bbox = label[1:]
+            bbox = label[2:]
             cls_id = 0#int(label[0]) always is 0 - human
             bbox[[0, 2]] = bbox[[0, 2]] * output_w
             bbox[[1, 3]] = bbox[[1, 3]] * output_h
@@ -468,7 +471,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
                 ind[k] = ct_int[1] * output_w + ct_int[0]
                 reg[k] = ct - ct_int
                 reg_mask[k] = 1
-                fformation[k] = label[0]
+                fformation[k] = label[1]
                 bbox_xys[k] = bbox_xy
 
         ret = {'input': imgs, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh, 'reg': reg, 'bbox': bbox_xys, 'fformation': fformation}

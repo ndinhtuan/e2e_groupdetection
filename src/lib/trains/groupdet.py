@@ -17,6 +17,7 @@ from models.decode import mot_decode
 from models.utils import _sigmoid, _tranpose_and_gather_feat
 from utils.post_process import ctdet_post_process
 from .base_trainer import BaseTrainer
+from .group_branch import SimpleConcat, pair_sampling 
 
 
 class GroupDetLoss(torch.nn.Module):
@@ -38,7 +39,7 @@ class GroupDetLoss(torch.nn.Module):
             prior_prob = 0.01
             bias_value = -math.log((1 - prior_prob) / prior_prob)
             torch.nn.init.constant_(self.classifier.bias, bias_value)
-        self.IDLoss = nn.CrossEntropyLoss(ignore_index=-1)
+        self.IDLoss = nn.BCEWithLogitsLoss()
         self.s_det = nn.Parameter(-1.85 * torch.ones(1))
         self.s_id = nn.Parameter(-1.05 * torch.ones(1))
 

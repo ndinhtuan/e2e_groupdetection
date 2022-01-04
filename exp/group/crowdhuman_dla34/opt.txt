@@ -1,13 +1,13 @@
 ==> torch version: 1.7.0
 ==> cudnn version: 7605
 ==> Cmd:
-['train.py', 'group', '--exp_id', 'crowdhuman_dla34', '--gpus', '0', '--batch_size', '8', '--num_epochs', '60', '--lr_step', '50', '--data_cfg', '../src/lib/cfg/gta_salsa.json']
+['train.py', 'group', '--exp_id', 'crowdhuman_dla34', '--gpus', '0', '--batch_size', '2', '--num_epochs', '60', '--lr_step', '50', '--data_cfg', '../src/lib/cfg/gta_salsa.json', '--num_workers', '0']
 ==> Opt:
   K: 500
   arch: dla_34
-  batch_size: 8
+  batch_size: 2
   cat_spec_wh: False
-  chunk_sizes: [8]
+  chunk_sizes: [2]
   conf_thres: 0.4
   data_cfg: ../src/lib/cfg/gta_salsa.json
   data_dir: /home/zyf/dataset
@@ -37,7 +37,7 @@
   lr: 0.0001
   lr_step: [50]
   ltrb: True
-  master_batch_size: 8
+  master_batch_size: 2
   mean: None
   metric: loss
   min_box_area: 100
@@ -52,7 +52,7 @@
   num_epochs: 60
   num_iters: -1
   num_stacks: 1
-  num_workers: 8
+  num_workers: 0
   off_weight: 1
   output_format: video
   output_h: 272

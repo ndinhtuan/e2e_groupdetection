@@ -38,8 +38,8 @@ def pair_sampling(group_embeds, ids, number_samples, positive=True):
     r"""
 
     Args:
-        group_embeds : Tensor for embedding of group batch_size x max_number of person x embed_dim
-        ids: Tensor for id of batch - batch_size x max_number of person. People in same group have 
+        group_embeds : Tensor for embedding of group number of person x embed_dim
+        ids: Tensor for id of batch - number of person. People in same group have 
             same id, people in group with size 1 have id = -1
         number_samples(int): number of sample for sampling for each data in batch
         positive (boolean): sampling positive or sampling negative
@@ -47,33 +47,27 @@ def pair_sampling(group_embeds, ids, number_samples, positive=True):
         embeds1 : Tensor number_samples x embed_dim
         embeds2 : Tensor number_samples x embed_dim
     """
-
     return _pair_sampling(group_embeds, ids, number_samples, positive)
 
 def _pair_sampling(group_embeds, ids, number_samples, positive=True):
     
     batch_size = group_embeds.shape[0]
-    embed_dim = group_embdes.shape[2]
-    embeds1 = torch.zeros((batch_size*number_samples, embed_dim))
-    embeds2 = torch.zeros((batch_size*number_samples, embed_dim))
+    embed_dim = group_embeds.shape[1]
+    embeds1 = torch.zeros((number_samples, embed_dim))
+    embeds2 = torch.zeros((number_samples, embed_dim))
 
-    for i in range(number_samples):
-        
-        id_ = ids[i]
-        group_embed = group_embeds[i]
+    id_samples = None
 
-        id_samples = None
+    if positive:
+        id_samples = _positive_id_pair_generator(ids, number_samples)
+    else:
+        id_samples = _negative_id_pair_generator(ids, number_samples)
+    
+    id_samples_1 = id_samples[:, 0].cpu().numpy()
+    id_samples_2 = id_samples[:, 1].cpu().numpy()
 
-        if positive:
-            id_samples = _positive_id_pair_generator(id_, number_samples)
-        else:
-            id_samples = _negative_id_pair_generator(id_, number_samples)
-        
-        id_samples_1 = id_samples[:, 0].numpy()
-        id_samples_2 = id_samples[:, 1].numpy()
-        
-        embeds1[i*number_samples:(i+1)*number_samples,:] = group_embed[id_samples_1]
-        embeds2[i*number_samples:(i+1)*number_samples,:] = group_embed[id_samples_2]
+    embeds1 = group_embeds[id_samples_1]
+    embeds2 = group_embeds[id_samples_2]
 
     return embeds1, embeds2
 
@@ -88,7 +82,7 @@ def _positive_id_pair_generator(id_, number_samples):
     Return:
         Tensor number_samples x 2: positive pairs in one image
     """
-    unique_group_id = torch.unique(id_).numpy()
+    unique_group_id = torch.unique(id_).cpu().numpy()
     combinations = None
 
     for group_id in unique_group_id:
@@ -117,7 +111,7 @@ def _negative_id_pair_generator(id_, number_samples):
         Tensor number_samples x 2: negative pairs in one image
     """
 
-    unique_group_id = torch.unique(id_).numpy()
+    unique_group_id = torch.unique(id_).cpu().numpy()
     combinations = None
 
     num_group = len(unique_group_id)
@@ -135,10 +129,10 @@ def _negative_id_pair_generator(id_, number_samples):
                 list_id_1 = (id_==group_id_1).nonzero(as_tuple=True)[0]
                 list_id_2 = (id_==group_id_2).nonzero(as_tuple=True)[0]
                 
-                for i1 in list_id_1.numpy():
-                    for i2 in list_id_2.numpy():
+                for i1 in list_id_1.cpu().numpy():
+                    for i2 in list_id_2.cpu().numpy():
 
-                        _combinations = torch.Tensor([id1, id2], dtype=torch.int32)
+                        _combinations = torch.Tensor([[i1, i2]])
                         if combinations is None:
                             combinations = _combinations
                         else:

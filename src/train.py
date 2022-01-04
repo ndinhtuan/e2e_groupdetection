@@ -43,7 +43,7 @@ def main(opt):
     model = create_model(opt.arch, opt.heads, opt.head_conv)
     optimizer = torch.optim.Adam(model.parameters(), opt.lr)
     group_model = SimpleConcat(opt)
-    optimizer = torch.optim.Adam(group_model.parameters(), opt.lr)
+    #optimizer = torch.optim.Adam(group_model.parameters(), opt.lr)
     start_epoch = 0
 
     # Get dataloader
@@ -61,18 +61,19 @@ def main(opt):
     Trainer = train_factory[opt.task]
     dict_model = {}
     dict_model["main_model"] = model
-    dict_model["group_branch"] = group_model
+    dict_model["group_model"] = group_model
     trainer = Trainer(opt, dict_model, optimizer)
     trainer.set_device(opt.gpus, opt.chunk_sizes, opt.device)
 
     if opt.load_model != '':
         model, optimizer, start_epoch = load_model(
             model, opt.load_model, trainer.optimizer, opt.resume, opt.lr, opt.lr_step)
-        # Need to load group_branch model
+        # Need to load group_branch pretrained model
 
     for epoch in range(start_epoch + 1, opt.num_epochs + 1):
         mark = epoch if opt.save_all else 'last'
         log_dict_train, _ = trainer.train(epoch, train_loader)
+        print("Epoch: ", log_dict_train)
         logger.write('epoch: {} |'.format(epoch))
         for k, v in log_dict_train.items():
             logger.scalar_summary('train_{}'.format(k), v, epoch)
