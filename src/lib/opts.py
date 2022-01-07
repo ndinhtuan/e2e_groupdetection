@@ -14,9 +14,9 @@ class opts(object):
     self.parser.add_argument('--dataset', default='jde', help='jde')
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
-    #self.parser.add_argument('--load_model', default='../models/ctdet_coco_dla_2x.pth',
+    self.parser.add_argument('--load_model', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_20.pth',
                              #help='path to pretrained model')
-    self.parser.add_argument('--load_model', default='',
+    #self.parser.add_argument('--load_model', default='',
                              help='path to pretrained model')
     self.parser.add_argument('--resume', action='store_true',
                              help='resume an experiment. '
@@ -107,7 +107,7 @@ class opts(object):
     self.parser.add_argument('--val_mot17', default=True, help='val mot17')
     self.parser.add_argument('--val_mot20', default=False, help='val mot20')
     self.parser.add_argument('--test_mot20', default=False, help='test mot20')
-    self.parser.add_argument('--val_hie', default=False, help='val hie')
+    self.parser.add_argument('--val_hie', default=True, help='val hie')
     self.parser.add_argument('--test_hie', default=False, help='test hie')
     self.parser.add_argument('--conf_thres', type=float, default=0.4, help='confidence thresh for tracking')
     self.parser.add_argument('--det_thres', type=float, default=0.3, help='confidence thresh for detection')
