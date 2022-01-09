@@ -333,7 +333,7 @@ def random_affine(img, targets=None, degrees=(-10, 10), translate=(.1, .1), scal
 
 
 def collate_fn(batch):
-    imgs, labels, paths, sizes = zip(*batch)
+    imgs, labels, paths, sizes, fformation_index = zip(*batch)
     batch_size = len(labels)
     imgs = torch.stack(imgs, 0)
     max_box_len = max([l.shape[0] for l in labels])
@@ -347,7 +347,7 @@ def collate_fn(batch):
             filled_labels[i, :isize, :] = labels[i]
         labels_len[i] = isize
 
-    return imgs, filled_labels, paths, sizes, labels_len.unsqueeze(1)
+    return imgs, filled_labels, paths, sizes, labels_len.unsqueeze(1), fformation_index
 
 
 class JointDataset(LoadImagesAndLabels):  # for training
@@ -556,12 +556,24 @@ class DetDataset(LoadImagesAndLabels):  # for training
         label_path = self.label_files[ds][files_index - start_index]
         if os.path.isfile(label_path):
             labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
-
+        
         imgs, labels, img_path, (h, w) = self.get_data(img_path, label_path)
+        fformation_index = self._get_fformation_index(labels0)
         for i, _ in enumerate(labels):
             if labels[i, 1] > -1:
                 labels[i, 1] += self.tid_start_index[ds]
 
-        return imgs, labels0, img_path, (h, w)
+        return imgs, labels0, img_path, (h, w), fformation_index
+    
+    def _get_fformation_index(self, label):
+        
+        group_id = label[:, 1]
+        unique_val = np.unique(group_id)
+        unique_val = unique_val[unique_val>0]
 
+        fformation_index = dict()
+        for val in unique_val:
+            fformation_index[int(val)] = [i for i, x in enumerate(group_id) if x==val]
+
+        return fformation_index
 

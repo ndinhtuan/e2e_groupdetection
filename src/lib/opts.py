@@ -18,6 +18,8 @@ class opts(object):
                              #help='path to pretrained model')
     #self.parser.add_argument('--load_model', default='',
                              help='path to pretrained model')
+    self.parser.add_argument('--load_model_group', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_last.pth',
+                             help='path to pretrained group model')
     self.parser.add_argument('--resume', action='store_true',
                              help='resume an experiment. '
                                   'Reloaded the optimizer parameter and '
