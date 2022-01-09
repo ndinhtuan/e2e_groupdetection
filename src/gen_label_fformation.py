@@ -35,7 +35,7 @@ def gen_fformation_label(src_path, dst_path, config_file, ext="jpg", shift_group
             src_label_path = "{}/{}.txt".format(src_path, name_file)
     
             if shift_group_id:
-                label = np.loadtxt(src_label_path, dtype=np.float32)
+                label = np.loadtxt(src_label_path, dtype=np.float32)[:,:6]
                 tmp = np.zeros(label.shape[1])
                 tmp[1]=max_id_group
                 label[label[:,1]>0] += tmp
@@ -52,6 +52,6 @@ def gen_fformation_label(src_path, dst_path, config_file, ext="jpg", shift_group
 if __name__=="__main__":
     
     SRC_PATH = "/data/tuannd/fformation/sample_data"
-    DST_PATH = "/data/tuannd/fformation/gta_dataset"
-    CFG_FILE = "fformation.train"
+    DST_PATH = "/data/tuannd/fformation/gta_dataset_test"
+    CFG_FILE = "fformation.test"
     gen_fformation_label(SRC_PATH, DST_PATH, CFG_FILE)

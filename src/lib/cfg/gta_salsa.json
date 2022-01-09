@@ -3,5 +3,9 @@
     "train":
     {
         "gta_salsa_train":"/data/tuannd/fformation/gta_dataset/fformation.train"
+    },
+    "test":
+    {
+        "gta_salsa_test": "/data/tuannd/fformation/gta_dataset_test/fformation.test"
     }
 }

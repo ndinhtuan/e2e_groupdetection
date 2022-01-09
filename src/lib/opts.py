@@ -122,7 +122,7 @@ class opts(object):
 
     # mot
     self.parser.add_argument('--data_cfg', type=str,
-                             default='../src/lib/cfg/data.json',
+                             default='../src/lib/cfg/gta_salsa.json',
                              help='load data from cfg')
     self.parser.add_argument('--data_dir', type=str, default='/home/zyf/dataset')
 
