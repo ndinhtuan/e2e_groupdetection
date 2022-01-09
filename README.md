@@ -47,3 +47,9 @@ You should change path to source and destination directory, after running this c
 python src/gen_label_detection.py
 ```
 We also need change source and destimation path in this file to generate in our own environment.
+
+Or, we can use the evaluation inside project:
+
+```
+python test_det.py group
+```

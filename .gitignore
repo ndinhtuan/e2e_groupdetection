@@ -4,5 +4,5 @@
 */__pycache__/
 exp/*
 *.pth
-lib/group_detector/*.png
+src/lib/group_detector/*.png
 *.jpg
