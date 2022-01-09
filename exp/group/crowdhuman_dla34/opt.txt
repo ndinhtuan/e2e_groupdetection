@@ -33,7 +33,7 @@
   input_video: ../videos/MOT16-03.mp4
   input_w: 608
   keep_res: False
-  load_model: 
+  load_model: /data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/model_last.pth
   lr: 0.0001
   lr_step: [50]
   ltrb: True
@@ -42,7 +42,7 @@
   metric: loss
   min_box_area: 100
   mse_loss: False
-  multi_loss: uncertainty
+  multi_loss: fix
   nms_thres: 0.4
   norm_wh: False
   not_cuda_benchmark: False
@@ -79,7 +79,7 @@
   test_mot20: False
   track_buffer: 30
   trainval: False
-  val_hie: False
+  val_hie: True
   val_intervals: 5
   val_mot15: False
   val_mot16: False

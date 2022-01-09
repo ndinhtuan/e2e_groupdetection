@@ -25,11 +25,12 @@ from models.model import create_model, load_model
 
 
 def write_results_score(filename, results):
-    save_format = '{class_id},{s}, {x1},{y1},{w},{h}\n'
+    save_format = '{class_id} {s} {x1} {y1} {w} {h}\n'
     with open(filename, 'w') as f:
         for class_id, tlwhs, scores in results:
             for tlwh, score in zip(tlwhs, scores):
                 x1, y1, w, h = tlwh
+                x1, y1, w, h = int(x1), int(y1), int(w), int(h)
                 line = save_format.format(class_id=class_id, x1=x1, y1=y1, w=w, h=h, s=score)
                 f.write(line)
     print('save results to {}'.format(filename))
@@ -107,7 +108,8 @@ def eval_seq(opt, dataloader, data_type, save_dir=None, show_image=True, frame_r
             wh = output['wh']
             reg = output['reg'] if opt.reg_offset else None
             dets, inds = mot_decode(hm, wh, reg=reg, ltrb=opt.ltrb, K=opt.K)
-
+        
+        print(dets)
         dets = post_process(opt, dets, meta)
         dets = merge_outputs(opt, [dets])[1]
 

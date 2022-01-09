@@ -14,7 +14,7 @@ class opts(object):
     self.parser.add_argument('--dataset', default='jde', help='jde')
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
-    self.parser.add_argument('--load_model', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_20.pth',
+    self.parser.add_argument('--load_model', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/model_last.pth',
                              #help='path to pretrained model')
     #self.parser.add_argument('--load_model', default='',
                              help='path to pretrained model')
@@ -147,7 +147,7 @@ class opts(object):
                              help='feature dim for reid')
     self.parser.add_argument('--ltrb', default=True,
                              help='regress left, top, right, bottom of bbox')
-    self.parser.add_argument('--multi_loss', default='uncertainty', help='multi_task loss: uncertainty | fix')
+    self.parser.add_argument('--multi_loss', default='fix', help='multi_task loss: uncertainty | fix')
 
     self.parser.add_argument('--norm_wh', action='store_true',
                              help='L1(\hat(y) / y, 1) or L1(\hat(y), y)')

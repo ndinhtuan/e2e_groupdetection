@@ -186,6 +186,7 @@ class LoadImagesAndLabels:  # for training
 
         # Load labels
         if os.path.isfile(label_path):
+            print(label_path)
             labels0 = np.loadtxt(label_path, dtype=np.float32)
             labels0 = labels0.reshape(-1, 20)[:,:6]
             #print("labels: ", labels0.shape); exit()
@@ -205,12 +206,14 @@ class LoadImagesAndLabels:  # for training
 
         plotFlag = False
         if plotFlag:
+            print("Saving figure")
             import matplotlib
             matplotlib.use('Agg')
             import matplotlib.pyplot as plt
             plt.figure(figsize=(50, 50))
             plt.imshow(img[:, :, ::-1])
             plt.plot(labels[:, [1, 3, 3, 1, 1]].T, labels[:, [2, 2, 4, 4, 2]].T, '.-')
+            #plt.plot( labels[:, [2, 2, 4, 4, 2]].T, labels[:,[5, 3, 3, 5, 5]].T, '.-')
             plt.axis('off')
             plt.savefig('test.jpg')
             time.sleep(10)
@@ -475,6 +478,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
                 bbox_xys[k] = bbox_xy
 
         ret = {'input': imgs, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh, 'reg': reg, 'bbox': bbox_xys, 'fformation': fformation}
+
         return ret
 
 
