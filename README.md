@@ -28,3 +28,22 @@ python src/gen_label_fformation.py
 ```
 sh experiments/gta_dla34.sh
 ```
+
+## Evaluation 
+
+### Evaluation for detection 
+We utilize github repository https://github.com/rafaelpadilla/Object-Detection-Metrics, so we need to convert prediction and ground truth to the right format. 
+
+1. Step 1: Run detection module
+
+```
+python src/detect.py group
+```
+You should change path to source and destination directory, after running this code, we have prediction file with <left> <top> <width> <height> format. 
+
+2. Similarly, we need to convert format of ground truth of dataset GTA-SALSA to <left> <top> <width> <height> :
+
+```
+python src/gen_label_detection.py
+```
+We also need change source and destimation path in this file to generate in our own environment.
