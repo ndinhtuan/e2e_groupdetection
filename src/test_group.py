@@ -87,8 +87,28 @@ def clustering(ids, embeds, group_model):
 
     return res
 
-def save_group_test(fformations, dets, img, file_path):
-    pass
+def save_group_test(ids, fformations, dets, img, file_path):
+    
+    id_dict = dict()
+
+    for i, fformation in enumerate(fformations):
+        for id_ in fformation:
+            id_dict[id_] = i
+
+    for t in range(len(dets)):
+
+        id_ = ids[t]
+        color_id = id_dict[id_]
+        print(color_id, "color_id")
+        x1 = dets[t, 0]
+        y1 = dets[t, 1]
+        x2 = dets[t, 2]
+        y2 = dets[t, 3]
+        x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
+
+        cv2.rectangle(img, (x1, y1), (x2, y2), [100+color_id*5, 100+color_id*5, 0], 4)
+    
+    cv2.imwrite(file_path, img)
 
 def compute_f1_score_group(preds, targets):
     
@@ -113,7 +133,7 @@ def test_group(
         img_size=(1088, 608),
         iou_thres=0.3,
         print_interval=40,
-):
+        save_result=True):
     data_cfg = opt.data_cfg
     f = open(data_cfg)
     data_cfg_dict = json.load(f)
@@ -147,6 +167,9 @@ def test_group(
 
     gt_fformation_indexs = []
     pred_fformation_indexs = []
+
+    path_saving_dir = "saving_test"
+    id_dir = 0
     for batch_i, (imgs, targets, paths, shapes, targets_len, fformation_indexs) in \
             enumerate(dataloader):
         
@@ -261,9 +284,16 @@ def test_group(
                         correct.append(0)
                 
                 matched_embeds = embeds[matched]
+                matched_dets = dets[matched]
                 list_detected = [int(i) for i in detected]
                 cluster = clustering(list_detected, matched_embeds, group_model)
                 pred_fformation_indexs.append(cluster)
+                if save_result:
+                    path = paths[si]
+                    img = cv2.imread(path)
+                    path = "{}/{}.png".format(path_saving_dir, id_dir)
+                    id_dir += 1
+                    save_group_test(list_detected, cluster, matched_dets, img, path)
 
             # Compute Average Precision (AP) per class
             AP, AP_class, R, P = ap_per_class(tp=correct,
