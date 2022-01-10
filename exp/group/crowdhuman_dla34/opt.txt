@@ -34,6 +34,7 @@
   input_w: 608
   keep_res: False
   load_model: /data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/model_last.pth
+  load_model_group: /data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_last.pth
   lr: 0.0001
   lr_step: [50]
   ltrb: True

@@ -25,6 +25,7 @@ import torch.nn.functional as F
 from trains.group_branch import SimpleConcat
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
+from utils.F1_calc import group_correctness
 
 def post_process(opt, dets, meta):
     dets = dets.detach().cpu().numpy()
@@ -77,13 +78,34 @@ def clustering(ids, embeds, group_model):
     for i1, i2 in zip(keep_idx1, keep_idx2):
         graph[i1][i2] = 1
     graph = csr_matrix(graph)
-    print(graph)
     n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
-    print(n_components)
-    print(labels)
+    unique_label = np.unique(labels)
+    
+    res = []
+    for label_ in unique_label:
+        res.append(list(np.array(ids)[labels==label_]))
+
+    return res
 
 def save_group_test(fformations, dets, img, file_path):
     pass
+
+def compute_f1_score_group(preds, targets):
+    
+    preds = [[[f"ID_00{_id}" for _id in pred] for pred in _preds] for _preds in preds]
+    targets = [[
+        [f"ID_00{_id}" for _id in target] for target in _targets
+    ] for _targets in targets]
+
+    avg_results = np.array([0.0,0.0])
+    for pred, target in zip(preds, targets):
+        correctness = group_correctness(pred, target, 2/3, False)
+        TP_n, FN_n, FP_n, precision, recall = correctness
+        avg_results += np.array([precision, recall])
+
+    avg_results /= len(preds)
+    f1_avg = float(2)* avg_results[0] * avg_results[1] / (avg_results[0] + avg_results[1])
+    print(f"F1: {f1_avg} - precision: {avg_results[0]} - recall: {avg_results[1]}")
 
 def test_group(
         opt,
@@ -122,8 +144,20 @@ def test_group(
     outputs, mAPs, mR, mP, TP, confidence, pred_class, target_class, jdict = \
         [], [], [], [], [], [], [], [], []
     AP_accum, AP_accum_count = np.zeros(nC), np.zeros(nC)
+
+    gt_fformation_indexs = []
+    pred_fformation_indexs = []
     for batch_i, (imgs, targets, paths, shapes, targets_len, fformation_indexs) in \
             enumerate(dataloader):
+        
+        # Create ground truth for fformations
+
+        for dict_ in fformation_indexs:
+            fformation_index = []
+            for k, v in dict_.items():
+                fformation_index.append(v)
+
+            gt_fformation_indexs.append(fformation_index)
 
         t = time.time()
         #seen += batch_size
@@ -227,8 +261,10 @@ def test_group(
                         correct.append(0)
                 
                 matched_embeds = embeds[matched]
-                clustering(matched, matched_embeds, group_model)
-                exit()
+                list_detected = [int(i) for i in detected]
+                cluster = clustering(list_detected, matched_embeds, group_model)
+                pred_fformation_indexs.append(cluster)
+
             # Compute Average Precision (AP) per class
             AP, AP_class, R, P = ap_per_class(tp=correct,
                                               conf=dets[:, 4],
@@ -253,6 +289,11 @@ def test_group(
             # Print image mAP and running mean mAP
             print(('%11s%11s' + '%11.3g' * 4 + 's') %
                   (seen, dataloader.dataset.nF, mean_P, mean_R, mean_mAP, time.time() - t))
+
+    print("pred_fformation_indexs: ", pred_fformation_indexs, len(pred_fformation_indexs))
+    print("gt_fformation_indexs: ", gt_fformation_indexs, len(gt_fformation_indexs))
+    print("F1 score group: ")
+    compute_f1_score_group(pred_fformation_indexs, gt_fformation_indexs); exit()
     # Print mAP per class
     print('%11s' * 5 % ('Image', 'Total', 'P', 'R', 'mAP'))
 
