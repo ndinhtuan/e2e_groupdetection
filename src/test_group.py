@@ -66,6 +66,7 @@ def clustering(ids, embeds, group_model):
             idx1.append(i)
             idx2.append(j)
 
+    print("EMBED SHAPE", embeds.shape)
     embeds1 = torch.Tensor(embeds[idx1])
     embeds2 = torch.Tensor(embeds[idx2])
     predict = torch.sigmoid(group_model(embeds1, embeds2))
@@ -158,7 +159,7 @@ def test_group(
     transforms = T.Compose([T.ToTensor()])
     dataset = DetDataset(dataset_root, test_path, img_size, augment=False, transforms=transforms)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False,
-                                             num_workers=8, drop_last=False, collate_fn=collate_fn)
+                                             num_workers=opt.num_workers, drop_last=False, collate_fn=collate_fn)
     mean_mAP, mean_R, mean_P, seen = 0.0, 0.0, 0.0, 0
     print('%11s' * 5 % ('Image', 'Total', 'P', 'R', 'mAP'))
     outputs, mAPs, mR, mP, TP, confidence, pred_class, target_class, jdict = \
@@ -205,8 +206,16 @@ def test_group(
         opt.K = 200
         detections, inds = mot_decode(hm, wh, reg=reg, ltrb=opt.ltrb, K=opt.K)
         id_feature = _tranpose_and_gather_feat(id_feature, inds)
-        id_feature = id_feature.squeeze(0)
+        print("ID FEATURE BEFORE SQUEEZE", id_feature.shape)
+
+        # id_feature = id_feature.squeeze(0)
         id_feature = id_feature.cpu().numpy()
+
+
+        print("IMG", imgs.shape)
+        print("OUTPUT", output.keys())
+        print("OUTPUT ID FEATURE", output['id'].shape)
+        print("ID FEATURE", id_feature.shape)
 
         # Compute average precision for each sample
         targets = [targets[i][:int(l)] for i, l in enumerate(targets_len)]
@@ -216,6 +225,7 @@ def test_group(
             #img0 = cv2.imread(path)
             dets = detections[si]
             embeds = id_feature[si]
+            print("EMBEDS SHAPE", embeds.shape)
             fformation_index = fformation_indexs[si]
             dets = dets.unsqueeze(0)
             dets = post_process(opt, dets, meta)
@@ -286,6 +296,11 @@ def test_group(
                 matched_embeds = embeds[matched]
                 matched_dets = dets[matched]
                 list_detected = [int(i) for i in detected]
+                print("MATCHED", matched)
+                print("LIST DETECTED", list_detected)
+                print("MATCHED EMBEDES", matched_embeds.shape)
+                print("DETS", dets.shape)
+                print("MATCHED DETS", matched_dets.shape)
                 cluster = clustering(list_detected, matched_embeds, group_model)
                 pred_fformation_indexs.append(cluster)
                 if save_result:

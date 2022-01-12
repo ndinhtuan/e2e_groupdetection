@@ -26,10 +26,14 @@ class SimpleConcat(torch.nn.Module):
             m.bias.data.fill_(0.01)
 
     def forward(self, embed1, embed2):
-        
-        cat_embed = torch.cat((embed1, embed2), 1)
-        cat_embed = self.fc(cat_embed)
-        cat_embed = torch.squeeze(cat_embed)
+        try:
+            print("SHAPE", embed1.shape,embed2.shape)
+            cat_embed = torch.cat((embed1, embed2), 1)
+            cat_embed = self.fc(cat_embed)
+            cat_embed = torch.squeeze(cat_embed)
+        except:
+            import IPython
+            IPython.embed()
 
         return cat_embed
 

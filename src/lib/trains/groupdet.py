@@ -43,7 +43,7 @@ class GroupDetLoss(torch.nn.Module):
         self.s_det = nn.Parameter(-1.85 * torch.ones(1))
         self.s_id = nn.Parameter(-1.05 * torch.ones(1))
 
-        self.number_sample_group_loss = 20
+        self.number_sample_group_loss = 30
 
     def forward(self, outputs, batch):
         opt = self.opt
@@ -70,18 +70,26 @@ class GroupDetLoss(torch.nn.Module):
                 id_target = batch['fformation'][batch['reg_mask'] > 0]
 
                 #id_output = self.classifier(id_head).contiguous()
-                preds = torch.zeros(2*self.number_sample_group_loss)
-                labels = torch.zeros(2*self.number_sample_group_loss)
+                
                 # positive sampling
                 pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
                         self.number_sample_group_loss, True)
                 pos_pred = self.group_model(pos_embeds1, pos_embeds2)
-                preds[:self.number_sample_group_loss] = pos_pred
-                labels[:self.number_sample_group_loss] = torch.ones(self.number_sample_group_loss)
+
                 # negative sampling
                 neg_embeds1, neg_embeds2 = pair_sampling(id_head, id_target, \
                         self.number_sample_group_loss, False)
                 neg_pred = self.group_model(neg_embeds1, neg_embeds2)
+
+                pos_shape = pos_pred.shape[0]
+                neg_shape = neg_pred.shape[0]
+                output_shape = min(2*self.number_sample_group_loss, pos_shape+neg_shape)
+
+                preds = torch.zeros(output_shape)
+                labels = torch.zeros(output_shape)
+
+                preds[:self.number_sample_group_loss] = pos_pred
+                labels[:self.number_sample_group_loss] = torch.ones(self.number_sample_group_loss)
                 preds[self.number_sample_group_loss:] = neg_pred
 
                 if self.opt.id_loss == 'focal':
