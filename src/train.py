@@ -65,6 +65,7 @@ def main(opt):
     trainer = Trainer(opt, dict_model, optimizer)
     trainer.set_device(opt.gpus, opt.chunk_sizes, opt.device)
 
+    print("PATH", opt.load_model)
     if opt.load_model != '':
         model, optimizer, start_epoch = load_model(
             model, opt.load_model, trainer.optimizer, opt.resume, opt.lr, opt.lr_step)
