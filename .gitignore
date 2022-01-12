@@ -8,3 +8,8 @@ src/lib/group_detector/*.png
 *.jpg
 src/saving_test/*.png
 
+DCNv2*
+data
+
+exp/*
+outputs/*

@@ -43,7 +43,7 @@ class GroupDetLoss(torch.nn.Module):
         self.s_det = nn.Parameter(-1.85 * torch.ones(1))
         self.s_id = nn.Parameter(-1.05 * torch.ones(1))
 
-        self.number_sample_group_loss = 10
+        self.number_sample_group_loss = 20
 
     def forward(self, outputs, batch):
         opt = self.opt
@@ -99,7 +99,7 @@ class GroupDetLoss(torch.nn.Module):
             loss = torch.exp(-self.s_det) * det_loss + torch.exp(-self.s_id) * id_loss + (self.s_det + self.s_id)
             loss *= 0.5
         else:
-            loss = det_loss + 0.1 * id_loss
+            loss = det_loss + 0.2 * id_loss
 
         loss_stats = {'loss': loss, 'hm_loss': hm_loss,
                       'wh_loss': wh_loss, 'off_loss': off_loss, 'id_loss': id_loss}

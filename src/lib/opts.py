@@ -161,6 +161,14 @@ class opts(object):
     self.parser.add_argument('--not_reg_offset', action='store_true',
                              help='not regress local offset.')
 
+
+    """
+    Custom arguments by tungch
+    """
+    self.parser.add_argument('--dali_cpu', action='store_true',
+                        help='Runs CPU based version of DALI pipeline.')
+    self.parser.add_argument("--local_rank", default=0, type=int)
+
   def parse(self, args=''):
     if args == '':
       opt = self.parser.parse_args()

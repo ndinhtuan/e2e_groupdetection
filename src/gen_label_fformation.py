@@ -2,6 +2,7 @@ import numpy as np
 import os
 import glob
 import shutil
+import argparse
 
 def gen_fformation_label(src_path, dst_path, config_file, ext="jpg", shift_group_id=True):
     
@@ -35,7 +36,8 @@ def gen_fformation_label(src_path, dst_path, config_file, ext="jpg", shift_group
             src_label_path = "{}/{}.txt".format(src_path, name_file)
     
             if shift_group_id:
-                label = np.loadtxt(src_label_path, dtype=np.float32)[:,:6]
+                print(src_label_path)
+                label = np.loadtxt(src_label_path, dtype=np.float32)
                 tmp = np.zeros(label.shape[1])
                 tmp[1]=max_id_group
                 label[label[:,1]>0] += tmp
@@ -49,9 +51,16 @@ def gen_fformation_label(src_path, dst_path, config_file, ext="jpg", shift_group
             else:
                 shutil.copyfile(src_label_path, dst_label_path)
 
-if __name__=="__main__":
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--src_path", type=str, default="/data/tuannd/fformation/sample_data")
+    parser.add_argument("--dst_path", type=str, default="/data/tuannd/fformation/gta_dataset")
+    parser.add_argument("--cfg_file", type=str, default="fformation.train")
     
-    SRC_PATH = "/data/tuannd/fformation/sample_data"
-    DST_PATH = "/data/tuannd/fformation/gta_dataset_test"
-    CFG_FILE = "fformation.test"
-    gen_fformation_label(SRC_PATH, DST_PATH, CFG_FILE)
+    args = parser.parse_args()
+
+    gen_fformation_label(args.src_path, args.dst_path, args.cfg_file)
+
+if __name__=="__main__":
+    main()
