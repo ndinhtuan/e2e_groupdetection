@@ -16,7 +16,7 @@ from models.data_parallel import DataParallel
 from logger import Logger
 from datasets.dataset_factory import get_dataset
 from trains.train_factory import train_factory
-from trains.group_branch import SimpleConcat
+from trains.group_branch import SimpleConcat, SimpleSum
 
 def main(opt):
     torch.manual_seed(opt.seed)
@@ -42,7 +42,8 @@ def main(opt):
     print('Creating model...')
     model = create_model(opt.arch, opt.heads, opt.head_conv)
     optimizer = torch.optim.Adam(model.parameters(), opt.lr)
-    group_model = SimpleConcat(opt)
+    #group_model = SimpleConcat(opt)
+    group_model = SimpleSum(opt)
     #optimizer = torch.optim.Adam(group_model.parameters(), opt.lr)
     start_epoch = 0
 
