@@ -53,6 +53,12 @@ class opts(object):
                              help='model architecture. Currently tested'
                                   'resdcn_34 | resdcn_50 | resfpndcn_34 |'
                                   'dla_34 | hrnet_18')
+    # group model
+    self.parser.add_argument('--group_arch', default='simple_concat', 
+                             help='model architecture. Currently tested'
+                                  'simple_concat')
+    self.parser.add_argument('--group_embed_dim', type=int, default=128,
+                            help='embed dim for group model')
     self.parser.add_argument('--head_conv', type=int, default=-1,
                              help='conv layer channels for output head'
                                   '0 for no conv layer'

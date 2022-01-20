@@ -14,6 +14,8 @@ from sklearn import metrics
 from scipy import interpolate
 import numpy as np
 from torchvision.transforms import transforms as T
+from lib.models.model import create_group_model
+from lib.models.networks.group.simple_concat import SimpleConcat
 from models.model import create_model, load_model
 from datasets.dataset.jde import DetDataset, collate_fn
 from utils.utils import xywh2xyxy, ap_per_class, bbox_iou
@@ -22,7 +24,6 @@ from models.decode import mot_decode
 from utils.post_process import ctdet_post_process
 from models.utils import _tranpose_and_gather_feat
 import torch.nn.functional as F
-from trains.group_branch import SimpleConcat
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 from utils.F1_calc import group_correctness
@@ -79,6 +80,11 @@ def clustering(ids, embeds, group_model):
     for i1, i2 in zip(keep_idx1, keep_idx2):
         graph[i1][i2] = 1
     graph = csr_matrix(graph)
+    
+    if num_obj == 0:
+        print("GRAPH IS NULL")
+        return []
+
     n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
     unique_label = np.unique(labels)
     
@@ -88,6 +94,37 @@ def clustering(ids, embeds, group_model):
 
     return res
 
+COLORS = [
+    (0,0,0),
+    (255,0,0),
+    (0,255,0),
+    (0,0,255),
+    (255,255,0),
+    (255,0,255),
+    (0,255,255),
+    (192,192,192),
+    (128,128,128),
+    (128,0,0),
+    (128,128,0),
+    (0,128,0),
+    (128,0,128),
+    (0,128,128),
+    (0,0,128),
+    (64,64,64),
+    (64,0,0),
+    (64,64,0),
+    (0,64,0),
+    (64,0,64),
+    (0,64,64),
+    (0,0,64),
+    (192,192,192),
+    (192,0,0),
+    (192,192,0),
+    (0,192,0),
+    (192,0,192),
+    (0,192,192),
+    (0,0,192)
+]
 def save_group_test(ids, fformations, dets, img, file_path):
     
     id_dict = dict()
@@ -95,7 +132,7 @@ def save_group_test(ids, fformations, dets, img, file_path):
     for i, fformation in enumerate(fformations):
         for id_ in fformation:
             id_dict[id_] = i
-
+    print(id_dict, ids)
     for t in range(len(dets)):
 
         id_ = ids[t]
@@ -107,8 +144,11 @@ def save_group_test(ids, fformations, dets, img, file_path):
         y2 = dets[t, 3]
         x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
 
-        cv2.rectangle(img, (x1, y1), (x2, y2), [100+color_id*5, 100+color_id*5, 0], 4)
+        # cv2.rectangle(img, (x1, y1), (x2, y2), (10+color_id*30, 10+color_id*30, color_id*30), 4)
+        cv2.rectangle(img, (x1, y1), (x2, y2), COLORS[color_id], 4)
+        print("Hello: ", (100+color_id*10, 100+color_id*10, color_id*5))
     
+    print("Saving image in ", file_path)
     cv2.imwrite(file_path, img)
 
 def compute_f1_score_group(preds, targets):
@@ -150,7 +190,7 @@ def test_group(
     model = create_model(opt.arch, opt.heads, opt.head_conv)
     model = load_model(model, opt.load_model)
     #model = torch.nn.DataParallel(model)
-    group_model = SimpleConcat(opt)
+    group_model = create_group_model(opt.group_arch, opt.group_embed_dim)
     group_model = load_model(group_model, opt.load_model_group)
     model = model.to(opt.device)
     model.eval()
@@ -170,7 +210,14 @@ def test_group(
     pred_fformation_indexs = []
 
     path_saving_dir = "saving_test"
+    if not os.path.isdir(path_saving_dir):
+        os.makedirs(path_saving_dir)
+
     id_dir = 0
+
+    # import IPython
+    # IPython.embed()
+
     for batch_i, (imgs, targets, paths, shapes, targets_len, fformation_indexs) in \
             enumerate(dataloader):
         
@@ -200,12 +247,12 @@ def test_group(
         hm = output['hm'].sigmoid_()
         wh = output['wh']
         reg = output['reg'] if opt.reg_offset else None
-        id_feature = output['id']
+        id_feature = output['id'] # (batch_size x embedding_dim x (width/down_ratio) x (height/down_ratio))
         id_feature = F.normalize(id_feature, dim=1)
 
         opt.K = 200
-        detections, inds = mot_decode(hm, wh, reg=reg, ltrb=opt.ltrb, K=opt.K)
-        id_feature = _tranpose_and_gather_feat(id_feature, inds)
+        detections, inds = mot_decode(hm, wh, reg=reg, ltrb=opt.ltrb, K=opt.K) # (batch_size x max_object x 6) , (batch_size x max_object)
+        id_feature = _tranpose_and_gather_feat(id_feature, inds) # (batch_size x max_object x embedding_dim)
         print("ID FEATURE BEFORE SQUEEZE", id_feature.shape)
 
         # id_feature = id_feature.squeeze(0)
@@ -276,8 +323,8 @@ def test_group(
                 abc = ace
                 '''
 
-                detected = []
-                matched = []
+                detected = [] # List of ground truth object id that is detected
+                matched = [] # List of dets id
                 for i, (*pred_bbox, conf) in enumerate(dets):
                     obj_pred = 0
                     pred_bbox = torch.FloatTensor(pred_bbox).view(1, -1)
@@ -306,7 +353,7 @@ def test_group(
                 if save_result:
                     path = paths[si]
                     img = cv2.imread(path)
-                    path = "{}/{}.png".format(path_saving_dir, id_dir)
+                    path = "{}/{}".format(path_saving_dir, os.path.basename(path))
                     id_dir += 1
                     save_group_test(list_detected, cluster, matched_dets, img, path)
 

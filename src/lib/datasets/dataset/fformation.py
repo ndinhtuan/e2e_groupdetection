@@ -188,8 +188,8 @@ class LoadImagesAndLabels:  # for training
         if os.path.isfile(label_path):
             labels0 = np.loadtxt(label_path, dtype=np.float32)
             labels0 = labels0.reshape(-1, 23)[:,:6]
-            print("LABEL PATH", label_path)
-            print("LABEL", labels0.shape)
+            # print("LABEL PATH", label_path)
+            # print("LABEL", labels0.shape)
             #print("labels: ", labels0.shape); exit()
 
             # Normalized xywh to pixel xyxy format

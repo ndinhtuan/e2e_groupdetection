@@ -10,13 +10,15 @@ import json
 import torch
 import torch.utils.data
 from torchvision.transforms import transforms as T
+from lib.models.model import create_group_model
+from lib.models.networks.group.simple_concat import SimpleConcat
 from opts import opts
 from models.model import create_model, load_model, save_model
 from models.data_parallel import DataParallel
 from logger import Logger
 from datasets.dataset_factory import get_dataset
 from trains.train_factory import train_factory
-from trains.group_branch import SimpleConcat
+
 
 def main(opt):
     torch.manual_seed(opt.seed)
@@ -41,9 +43,9 @@ def main(opt):
 
     print('Creating model...')
     model = create_model(opt.arch, opt.heads, opt.head_conv)
+    group_model = create_group_model(opt.group_arch, opt.group_embed_dim)
+
     optimizer = torch.optim.Adam(model.parameters(), opt.lr)
-    group_model = SimpleConcat(opt)
-    #optimizer = torch.optim.Adam(group_model.parameters(), opt.lr)
     start_epoch = 0
 
     # Get dataloader
@@ -80,26 +82,26 @@ def main(opt):
             logger.scalar_summary('train_{}'.format(k), v, epoch)
             logger.write('{} {:8f} | '.format(k, v))
 
-        if opt.val_intervals > 0 and epoch % opt.val_intervals == 0:
-            save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(mark)),
-                       epoch, model, optimizer)
-            save_model(os.path.join(opt.save_dir, 'group_model_{}.pth'.format(mark)),
-                       epoch, group_model, optimizer)
-        else:
-            save_model(os.path.join(opt.save_dir, 'model_last.pth'),
-                       epoch, model, optimizer)
-            save_model(os.path.join(opt.save_dir, 'group_model_last.pth'),
-                       epoch, group_model, optimizer)
-        logger.write('\n')
-        if epoch in opt.lr_step:
-            save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)),
-                       epoch, model, optimizer)
-            save_model(os.path.join(opt.save_dir, 'group_model_{}.pth'.format(epoch)),
-                       epoch, group_model, optimizer)
-            lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
-            print('Drop LR to', lr)
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = lr
+        # if opt.val_intervals > 0 and epoch % opt.val_intervals == 0:
+        #     save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(mark)),
+        #                epoch, model, optimizer)
+        #     save_model(os.path.join(opt.save_dir, 'group_model_{}.pth'.format(mark)),
+        #                epoch, group_model, optimizer)
+        # else:
+        #     save_model(os.path.join(opt.save_dir, 'model_last.pth'),
+        #                epoch, model, optimizer)
+        #     save_model(os.path.join(opt.save_dir, 'group_model_last.pth'),
+        #                epoch, group_model, optimizer)
+        # logger.write('\n')
+        # if epoch in opt.lr_step:
+        #     save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)),
+        #                epoch, model, optimizer)
+        #     save_model(os.path.join(opt.save_dir, 'group_model_{}.pth'.format(epoch)),
+        #                epoch, group_model, optimizer)
+        #     lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
+        #     print('Drop LR to', lr)
+        #     for param_group in optimizer.param_groups:
+        #         param_group['lr'] = lr
         if epoch % 5 == 0 or epoch >= 25:
             save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)),
                        epoch, model, optimizer)
