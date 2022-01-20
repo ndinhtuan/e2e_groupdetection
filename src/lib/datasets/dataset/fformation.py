@@ -371,6 +371,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
         self.tid_num = OrderedDict()
         self.tid_start_index = OrderedDict()
         self.num_classes = 1
+        self.curr_image_id = 1
 
         for ds, path in paths.items():
             with open(path, 'r') as file:
@@ -433,6 +434,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
         bbox_xys = np.zeros((self.max_objs, 4), dtype=np.float32)
         # fformation group tensor
         fformation = np.zeros((self.max_objs,  ),  dtype=np.int64) # [1, 2, 0, 0, ..., 1, 2]
+        image_id = np.zeros((self.max_objs, ), dtype=np.int64) # [1, 1, 1, 1, ..., 1, 1]
 
         draw_gaussian = draw_msra_gaussian if self.opt.mse_loss else draw_umich_gaussian
         for k in range(min(num_objs, self.max_objs)):
@@ -476,8 +478,10 @@ class JointDataset(LoadImagesAndLabels):  # for training
                 reg_mask[k] = 1
                 fformation[k] = label[1]
                 bbox_xys[k] = bbox_xy
+                image_id[k] = self.curr_image_id
 
-        ret = {'input': imgs, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh, 'reg': reg, 'bbox': bbox_xys, 'fformation': fformation}
+        ret = {'input': imgs, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh, 'reg': reg, 'bbox': bbox_xys, 'fformation': fformation, 'image_id': image_id}
+        self.curr_image_id += 1
 
         return ret
 

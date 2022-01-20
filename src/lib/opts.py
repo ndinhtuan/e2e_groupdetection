@@ -169,11 +169,10 @@ class opts(object):
 
 
     """
-    Custom arguments by tungch
+    Custom arguments
     """
-    self.parser.add_argument('--dali_cpu', action='store_true',
-                        help='Runs CPU based version of DALI pipeline.')
-    self.parser.add_argument("--local_rank", default=0, type=int)
+    self.parser.add_argument("--num_sample_positive", type=int, default=10)
+    self.parser.add_argument("--num_sample_negative", type=int, default=10)
 
   def parse(self, args=''):
     if args == '':

@@ -35,7 +35,7 @@ def _pair_sampling(group_embeds, ids, number_samples, positive=True):
     embeds1 = group_embeds[id_samples_1]
     embeds2 = group_embeds[id_samples_2]
 
-    return embeds1, embeds2, id_samples_1, id_samples_2
+    return embeds1, embeds2
 
 def _positive_id_pair_generator(id_, number_samples):
 
