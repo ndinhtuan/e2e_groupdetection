@@ -3,7 +3,7 @@ python train.py group \
 --exp_id crowdhuman_dla34 \
 --group_arch 'simple_concat' \
 --group_embed_dim 128 \
---gpus 2 --batch_size 1 \
+--gpus 0 --batch_size 1 \
 --num_epochs 500 \
 --lr_step '50,100' \
 --lr 1e-5 \

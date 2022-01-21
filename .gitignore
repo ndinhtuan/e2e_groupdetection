@@ -1,7 +1,7 @@
 .idea
 *.swp
 *.pyc
-*/__pycache__/
+**/__pycache__/
 exp/*
 *.pth
 src/lib/group_detector/*.png

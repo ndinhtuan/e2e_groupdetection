@@ -37,9 +37,17 @@ def main(opt):
 
 
     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
-    opt.device = torch.device('cuda' if opt.gpus[0] >= 0 else 'cpu')
+
+    if len(opt.gpus) == 0:
+        opt.device = torch.device('cpu')
+    elif len(opt.gpus) == 1:
+        opt.device = torch.device(f'cuda:{opt.gpus[0]}')
+    else:
+        opt.device = torch.device('cuda')
 
     print('Creating model...')
+    print("DEVICES", os.environ['CUDA_VISIBLE_DEVICES'], opt.gpus_str, opt.gpus)
+
     model = create_model(opt.arch, opt.heads, opt.head_conv)
     group_model = create_group_model(opt.group_arch, opt.group_embed_dim)
 
