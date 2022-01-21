@@ -253,16 +253,10 @@ def test_group(
         opt.K = 200
         detections, inds = mot_decode(hm, wh, reg=reg, ltrb=opt.ltrb, K=opt.K) # (batch_size x max_object x 6) , (batch_size x max_object)
         id_feature = _tranpose_and_gather_feat(id_feature, inds) # (batch_size x max_object x embedding_dim)
-        print("ID FEATURE BEFORE SQUEEZE", id_feature.shape)
 
         # id_feature = id_feature.squeeze(0)
         id_feature = id_feature.cpu().numpy()
 
-
-        print("IMG", imgs.shape)
-        print("OUTPUT", output.keys())
-        print("OUTPUT ID FEATURE", output['id'].shape)
-        print("ID FEATURE", id_feature.shape)
 
         # Compute average precision for each sample
         targets = [targets[i][:int(l)] for i, l in enumerate(targets_len)]
@@ -272,7 +266,6 @@ def test_group(
             #img0 = cv2.imread(path)
             dets = detections[si]
             embeds = id_feature[si]
-            print("EMBEDS SHAPE", embeds.shape)
             fformation_index = fformation_indexs[si]
             dets = dets.unsqueeze(0)
             dets = post_process(opt, dets, meta)

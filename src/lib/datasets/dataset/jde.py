@@ -557,7 +557,6 @@ class DetDataset(LoadImagesAndLabels):  # for training
         img_path = self.img_files[ds][files_index - start_index]
         label_path = self.label_files[ds][files_index - start_index]
         if os.path.isfile(label_path):
-            # print("LABEL PATH", label_path)
             # labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
             labels0 = np.loadtxt(label_path, dtype=np.float32)
             labels0 = labels0.reshape(-1, 23)[:,:6]

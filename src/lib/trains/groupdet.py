@@ -92,7 +92,6 @@ class GroupDetLoss(torch.nn.Module):
                 preds = torch.zeros(output_shape)
                 labels = torch.zeros(output_shape)
 
-                print("OUTPUT", output_shape, preds.shape, pos_pred.shape, neg_pred.shape)
                 # Concat positive and negative prediction
                 preds[:pos_shape] = pos_pred
                 preds[pos_shape:pos_shape+neg_shape] = neg_pred
