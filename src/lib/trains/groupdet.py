@@ -72,18 +72,22 @@ class GroupDetLoss(torch.nn.Module):
                 id_head =  F.normalize(id_head)
                 id_target = batch['fformation'][batch['reg_mask'] > 0]
 
-                print(id_head.shape, id_target.shape)
-
                 # positive sampling
                 pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
                         self.number_sample_positive, True)
-                pos_pred = self.group_model(pos_embeds1, pos_embeds2)
-
+                
                 # negative sampling
                 neg_embeds1, neg_embeds2 = pair_sampling(id_head, id_target, \
                         self.number_sample_negative, False)
-                neg_pred = self.group_model(neg_embeds1, neg_embeds2)
+                
+                
+                pos_pred = self.group_model(pos_embeds1, pos_embeds2) \
+                            if pos_embeds1 is not None and pos_embeds2 is not None else torch.tensor([])
+                neg_pred = self.group_model(neg_embeds1, neg_embeds2) \
+                            if neg_embeds1 is not None and neg_embeds2 is not None else torch.tensor([])
 
+                # print("POS PRED", pos_pred.shape, pos_pred)
+                # print("NEG PRED", neg_pred.shape, neg_pred)
                 pos_shape = pos_pred.shape[0]
                 neg_shape = neg_pred.shape[0]
 

@@ -63,7 +63,6 @@ class BaseTrainer(object):
       if iter_id >= num_iters:
         break
       data_time.update(time.time() - end)
-
       for k in batch:
         if k != 'meta':
           batch[k] = batch[k].to(device=opt.device, non_blocking=True)

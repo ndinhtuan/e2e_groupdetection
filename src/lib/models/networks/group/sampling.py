@@ -29,6 +29,9 @@ def _pair_sampling(group_embeds, ids, number_samples, positive=True):
     else:
         id_samples = _negative_id_pair_generator(ids, number_samples)
     
+    if id_samples is None:
+        return None, None
+    
     id_samples_1 = id_samples[:, 0].cpu().numpy()
     id_samples_2 = id_samples[:, 1].cpu().numpy()
 
@@ -61,6 +64,9 @@ def _positive_id_pair_generator(id_, number_samples):
                 combinations = _combinations
             else:
                 combinations = torch.cat([combinations, _combinations])
+    
+    if combinations is None:
+        return None
     
     combinations = combinations[torch.randperm(combinations.size()[0])]
     return combinations[:number_samples,:]
@@ -103,6 +109,8 @@ def _negative_id_pair_generator(id_, number_samples):
                             combinations = _combinations
                         else:
                             combinations = torch.cat([combinations, _combinations])
-    
+    if combinations is None:
+        return None
+
     combinations = combinations[torch.randperm(combinations.size()[0])]
     return combinations[:number_samples,:]

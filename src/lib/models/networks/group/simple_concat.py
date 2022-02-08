@@ -28,7 +28,8 @@ class SimpleConcat(torch.nn.Module):
         cat_embed = torch.cat((embed1, embed2), 1)
 
         cat_embed = self.fc(cat_embed)
-        cat_embed = torch.squeeze(cat_embed)
+
+        cat_embed = torch.squeeze(cat_embed, 1)
 
         return cat_embed
 
