@@ -71,7 +71,7 @@ class GroupDetLoss(torch.nn.Module):
                 id_head = id_head[batch['reg_mask'] > 0].contiguous()
                 id_head =  F.normalize(id_head)
                 id_target = batch['fformation'][batch['reg_mask'] > 0]
-
+                
                 # positive sampling
                 pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
                         self.number_sample_positive, True)
@@ -79,11 +79,11 @@ class GroupDetLoss(torch.nn.Module):
                 # negative sampling
                 neg_embeds1, neg_embeds2 = pair_sampling(id_head, id_target, \
                         self.number_sample_negative, False)
+
                 
-                
-                pos_pred = self.group_model(pos_embeds1, pos_embeds2) \
+                pos_pred = self.group_model(pos_embeds1, pos_embeds2, id_head) \
                             if pos_embeds1 is not None and pos_embeds2 is not None else torch.tensor([])
-                neg_pred = self.group_model(neg_embeds1, neg_embeds2) \
+                neg_pred = self.group_model(neg_embeds1, neg_embeds2, id_head) \
                             if neg_embeds1 is not None and neg_embeds2 is not None else torch.tensor([])
 
                 # print("POS PRED", pos_pred.shape, pos_pred)
@@ -124,6 +124,9 @@ class GroupDetTrainer(BaseTrainer):
     def __init__(self, opt, dict_model, optimizer=None):
         self.main_model = dict_model["main_model"]
         self.group_model = dict_model["group_model"]
+        print("Main model", self.main_model)
+        print("Group model", self.group_model)
+        
         super(GroupDetTrainer, self).__init__(opt, self.main_model, optimizer=optimizer)
 
     def _get_losses(self, opt):

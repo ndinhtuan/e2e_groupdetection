@@ -13,4 +13,5 @@ data
 
 exp/*
 outputs/*
+**/.ipynb_checkpoints
 *.txt

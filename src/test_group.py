@@ -133,6 +133,7 @@ def save_group_test(ids, fformations, dets, img, file_path):
         for id_ in fformation:
             id_dict[id_] = i
     print(id_dict, ids)
+    boxes = []
     for t in range(len(dets)):
 
         id_ = ids[t]
@@ -145,11 +146,16 @@ def save_group_test(ids, fformations, dets, img, file_path):
         x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
 
         # cv2.rectangle(img, (x1, y1), (x2, y2), (10+color_id*30, 10+color_id*30, color_id*30), 4)
+        boxes.append((x1, x2, y1, y2))
         cv2.rectangle(img, (x1, y1), (x2, y2), COLORS[color_id], 4)
-        print("Hello: ", (100+color_id*10, 100+color_id*10, color_id*5))
     
+    bbox_file_path = file_path + ".bbox.txt"
     print("Saving image in ", file_path)
     cv2.imwrite(file_path, img)
+    print("Saving bbox in ", bbox_file_path)
+    with open(bbox_file_path, "w") as fout:
+        fout.write(str(len(dets))+"\n")
+        fout.write(str(dets))
 
 def compute_f1_score_group(preds, targets):
     

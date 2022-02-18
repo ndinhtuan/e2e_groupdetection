@@ -2,10 +2,10 @@
     "root":"",
     "train":
     {
-        "gta_salsa_train":"/root/workspace/01_fformation/e2e_groupdetection/data/gta_dataset/fformation.train"
+        "gta_salsa_train":"/home/tungch/e2e_groupdetection/data/gta_dataset/fformation.train"
     },
     "test":
     {
-        "gta_salsa_test": "/root/workspace/01_fformation/e2e_groupdetection/data/gta_dataset/fformation.test"
+        "gta_salsa_test": "/home/tungch/e2e_groupdetection/data/gta_dataset/fformation.test"
     }
 }

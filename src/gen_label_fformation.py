@@ -38,6 +38,8 @@ def gen_fformation_label(src_path, dst_path, config_file, ext="jpg", shift_group
             if shift_group_id:
                 print(src_label_path)
                 label = np.loadtxt(src_label_path, dtype=np.float32)
+                if len(label.shape) == 1:
+                    label = np.expand_dims(label, axis=0)
                 tmp = np.zeros(label.shape[1])
                 tmp[1]=max_id_group
                 label[label[:,1]>0] += tmp

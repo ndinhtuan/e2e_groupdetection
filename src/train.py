@@ -22,7 +22,8 @@ from trains.train_factory import train_factory
 def main(opt):
     torch.manual_seed(opt.seed)
     torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
-
+    torch.set_num_threads(opt.num_workers)
+    
     print('Setting up data...')
     Dataset = get_dataset(opt.dataset, opt.task)
     f = open(opt.data_cfg)
@@ -55,7 +56,7 @@ def main(opt):
     start_epoch = 0
 
     # Get dataloader
-
+    print("Num workers", opt.num_workers)
     train_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -113,7 +114,7 @@ def main(opt):
             print('Drop LR to', lr)
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
-        if epoch % 5 == 0 or epoch >= 25:
+        if epoch % 1 == 0 or epoch >= 25:
             save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)),
                        epoch, model, optimizer)
             save_model(os.path.join(opt.save_dir, 'group_model_{}.pth'.format(epoch)),

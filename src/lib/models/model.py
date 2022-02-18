@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import os
 
-from lib.models.networks.group.simple_concat import get_group_simple_concat
+from lib.models.networks.group.simple_concat import get_group_simple_concat, get_group_attention_concat
 
 from .networks.dlav0 import get_pose_net as get_dlav0
 from .networks.pose_dla_dcn import get_pose_net as get_dla_dcn
@@ -29,6 +29,7 @@ _model_factory = {
 
 _group_model_factory = {
   'simple_concat': get_group_simple_concat,
+  'attn_concat': get_group_attention_concat
 }
 
 def create_model(arch, heads, head_conv):
