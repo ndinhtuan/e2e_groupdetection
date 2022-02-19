@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import math
+from turtle import pos
 import torch
 import numpy as np
 import torch.nn as nn
@@ -10,6 +11,7 @@ import torch.nn.functional as F
 import torchvision
 
 from fvcore.nn import sigmoid_focal_loss_jit
+from lib.models.networks.group.sampling import pair_sampling
 
 from models.losses import FocalLoss, TripletLoss
 from models.losses import RegL1Loss, RegLoss, NormRegL1Loss, RegWeightedL1Loss
@@ -17,7 +19,6 @@ from models.decode import mot_decode
 from models.utils import _sigmoid, _tranpose_and_gather_feat
 from utils.post_process import ctdet_post_process
 from .base_trainer import BaseTrainer
-from .group_branch import SimpleConcat, pair_sampling 
 
 
 class GroupDetLoss(torch.nn.Module):
@@ -31,19 +32,21 @@ class GroupDetLoss(torch.nn.Module):
                 RegWeightedL1Loss() if opt.cat_spec_wh else self.crit_reg
         self.opt = opt
         self.emb_dim = opt.reid_dim
-        #self.classifier = nn.Linear(self.emb_dim, self.nID)
         self.group_model = group_model 
+
+        self.number_sample_negative = opt.num_sample_negative
+        self.number_sample_positive = opt.num_sample_positive
 
         if opt.id_loss == 'focal':
             torch.nn.init.normal_(self.classifier.weight, std=0.01)
             prior_prob = 0.01
             bias_value = -math.log((1 - prior_prob) / prior_prob)
             torch.nn.init.constant_(self.classifier.bias, bias_value)
-        self.IDLoss = nn.BCEWithLogitsLoss()
+        
+        self.IDLoss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([opt.num_sample_negative/(opt.num_sample_negative + opt.num_sample_positive)*2]))
         self.s_det = nn.Parameter(-1.85 * torch.ones(1))
         self.s_id = nn.Parameter(-1.05 * torch.ones(1))
 
-        self.number_sample_group_loss = 10
 
     def forward(self, outputs, batch):
         opt = self.opt
@@ -68,39 +71,49 @@ class GroupDetLoss(torch.nn.Module):
                 id_head = id_head[batch['reg_mask'] > 0].contiguous()
                 id_head =  F.normalize(id_head)
                 id_target = batch['fformation'][batch['reg_mask'] > 0]
-                id_image = batch['image_id'][batch['reg_mask'] > 0]
-
-                #id_output = self.classifier(id_head).contiguous()
-                preds = torch.zeros(2*self.number_sample_group_loss)
-                labels = torch.zeros(2*self.number_sample_group_loss)
+                
                 # positive sampling
                 pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
-                        self.number_sample_group_loss, id_image, True)
-                pos_pred = self.group_model(pos_embeds1, pos_embeds2)
-                preds[:self.number_sample_group_loss] = pos_pred
-                labels[:self.number_sample_group_loss] = torch.ones(self.number_sample_group_loss)
+                        self.number_sample_positive, True)
+                
                 # negative sampling
                 neg_embeds1, neg_embeds2 = pair_sampling(id_head, id_target, \
-                        self.number_sample_group_loss, id_image, False)
-                neg_pred = self.group_model(neg_embeds1, neg_embeds2)
-                preds[self.number_sample_group_loss:] = neg_pred
+                        self.number_sample_negative, False)
 
-                if self.opt.id_loss == 'focal':
-                    id_target_one_hot = id_output.new_zeros((id_head.size(0), self.nID)).scatter_(1,
-                                                                                                  id_target.long().view(
-                                                                                                      -1, 1), 1)
-                    id_loss += sigmoid_focal_loss_jit(id_output, id_target_one_hot,
-                                                      alpha=0.25, gamma=2.0, reduction="sum"
-                                                      ) / id_output.size(0)
-                else:
-                    id_loss += self.IDLoss(preds, labels)
+                
+                pos_pred = self.group_model(pos_embeds1, pos_embeds2, id_head) \
+                            if pos_embeds1 is not None and pos_embeds2 is not None else torch.tensor([])
+                neg_pred = self.group_model(neg_embeds1, neg_embeds2, id_head) \
+                            if neg_embeds1 is not None and neg_embeds2 is not None else torch.tensor([])
+
+                # print("POS PRED", pos_pred.shape, pos_pred)
+                # print("NEG PRED", neg_pred.shape, neg_pred)
+                pos_shape = pos_pred.shape[0]
+                neg_shape = neg_pred.shape[0]
+
+                output_shape = pos_shape+neg_shape
+
+                preds = torch.zeros(output_shape)
+                labels = torch.zeros(output_shape)
+
+                # Concat positive and negative prediction
+                preds[:pos_shape] = pos_pred
+                preds[pos_shape:pos_shape+neg_shape] = neg_pred
+
+                # Assign 1 to every position of positive samples
+                labels[:pos_shape] = torch.ones(pos_shape)
+
+                preds = torch.unsqueeze(preds, dim=-1).cuda()
+                labels = torch.unsqueeze(labels, dim=-1).cuda()
+
+                id_loss = id_loss + self.IDLoss(preds, labels)
 
         det_loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + opt.off_weight * off_loss
         if opt.multi_loss == 'uncertainty':
             loss = torch.exp(-self.s_det) * det_loss + torch.exp(-self.s_id) * id_loss + (self.s_det + self.s_id)
             loss *= 0.5
         else:
-            loss = det_loss + 0.1 * id_loss
+            loss = det_loss + 0.2 * id_loss
 
         loss_stats = {'loss': loss, 'hm_loss': hm_loss,
                       'wh_loss': wh_loss, 'off_loss': off_loss, 'id_loss': id_loss}
@@ -111,6 +124,9 @@ class GroupDetTrainer(BaseTrainer):
     def __init__(self, opt, dict_model, optimizer=None):
         self.main_model = dict_model["main_model"]
         self.group_model = dict_model["group_model"]
+        print("Main model", self.main_model)
+        print("Group model", self.group_model)
+        
         super(GroupDetTrainer, self).__init__(opt, self.main_model, optimizer=optimizer)
 
     def _get_losses(self, opt):

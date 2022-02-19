@@ -187,8 +187,7 @@ class LoadImagesAndLabels:  # for training
         # Load labels
         if os.path.isfile(label_path):
             labels0 = np.loadtxt(label_path, dtype=np.float32)
-            labels0 = labels0.reshape(-1, 20)[:,:6]
-            #print("labels: ", labels0.shape); exit()
+            labels0 = labels0.reshape(-1, 23)[:,:6]
 
             # Normalized xywh to pixel xyxy format
             labels = labels0.copy()
@@ -362,7 +361,6 @@ class JointDataset(LoadImagesAndLabels):  # for training
     num_classes = 1
 
     def __init__(self, opt, root, paths, img_size=(1088, 608), augment=False, transforms=None):
-
         self.opt = opt
         dataset_names = paths.keys()
         self.img_files = OrderedDict()
@@ -549,7 +547,9 @@ class DetDataset(LoadImagesAndLabels):  # for training
         img_path = self.img_files[ds][files_index - start_index]
         label_path = self.label_files[ds][files_index - start_index]
         if os.path.isfile(label_path):
-            labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
+            labels0 = np.loadtxt(label_path, dtype=np.float32)
+            labels0 = labels0.reshape(-1, 23)[:,:6]
+
 
         imgs, labels, img_path, (h, w) = self.get_data(img_path, label_path)
         for i, _ in enumerate(labels):

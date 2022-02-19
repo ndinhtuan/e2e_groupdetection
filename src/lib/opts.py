@@ -53,6 +53,12 @@ class opts(object):
                              help='model architecture. Currently tested'
                                   'resdcn_34 | resdcn_50 | resfpndcn_34 |'
                                   'dla_34 | hrnet_18')
+    # group model
+    self.parser.add_argument('--group_arch', default='simple_concat', 
+                             help='model architecture. Currently tested'
+                                  'simple_concat')
+    self.parser.add_argument('--group_embed_dim', type=int, default=128,
+                            help='embed dim for group model')
     self.parser.add_argument('--head_conv', type=int, default=-1,
                              help='conv layer channels for output head'
                                   '0 for no conv layer'
@@ -160,6 +166,13 @@ class opts(object):
                              help='category specific bounding box size.')
     self.parser.add_argument('--not_reg_offset', action='store_true',
                              help='not regress local offset.')
+
+
+    """
+    Custom arguments
+    """
+    self.parser.add_argument("--num_sample_positive", type=int, default=10)
+    self.parser.add_argument("--num_sample_negative", type=int, default=10)
 
   def parse(self, args=''):
     if args == '':
