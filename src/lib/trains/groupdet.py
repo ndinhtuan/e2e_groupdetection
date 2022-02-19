@@ -68,19 +68,20 @@ class GroupDetLoss(torch.nn.Module):
                 id_head = id_head[batch['reg_mask'] > 0].contiguous()
                 id_head =  F.normalize(id_head)
                 id_target = batch['fformation'][batch['reg_mask'] > 0]
+                id_image = batch['image_id'][batch['reg_mask'] > 0]
 
                 #id_output = self.classifier(id_head).contiguous()
                 preds = torch.zeros(2*self.number_sample_group_loss)
                 labels = torch.zeros(2*self.number_sample_group_loss)
                 # positive sampling
                 pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
-                        self.number_sample_group_loss, True)
+                        self.number_sample_group_loss, id_image, True)
                 pos_pred = self.group_model(pos_embeds1, pos_embeds2)
                 preds[:self.number_sample_group_loss] = pos_pred
                 labels[:self.number_sample_group_loss] = torch.ones(self.number_sample_group_loss)
                 # negative sampling
                 neg_embeds1, neg_embeds2 = pair_sampling(id_head, id_target, \
-                        self.number_sample_group_loss, False)
+                        self.number_sample_group_loss, id_image, False)
                 neg_pred = self.group_model(neg_embeds1, neg_embeds2)
                 preds[self.number_sample_group_loss:] = neg_pred
 

@@ -33,7 +33,65 @@ class SimpleConcat(torch.nn.Module):
 
         return cat_embed
 
-def pair_sampling(group_embeds, ids, number_samples, positive=True):
+class SimpleSum(torch.nn.Module):
+
+    def __init__(self, opt):
+        super(SimpleSum, self).__init__()
+        self.embed_dim = 128#opt.embed_dim
+
+        self.fc = torch.nn.Sequential(
+                torch.nn.Linear(self.embed_dim, 100),
+                torch.nn.ReLU(),
+                torch.nn.Linear(100, 50),
+                torch.nn.ReLU(),
+                torch.nn.Linear(50, 1),
+        )
+
+        self.fc.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, torch.nn.Linear):
+            torch.nn.init.xavier_uniform(m.weight)
+            m.bias.data.fill_(0.01)
+
+    def forward(self, embed1, embed2):
+        
+        cat_embed = torch.add(embed1, embed2)
+        cat_embed = self.fc(cat_embed)
+        cat_embed = torch.squeeze(cat_embed)
+
+        return cat_embed
+
+class SimpleAvg(torch.nn.Module):
+
+    def __init__(self, opt):
+        super(SimpleSum, self).__init__()
+        self.embed_dim = 128#opt.embed_dim
+
+        self.fc = torch.nn.Sequential(
+                torch.nn.Linear(self.embed_dim, 100),
+                torch.nn.ReLU(),
+                torch.nn.Linear(100, 50),
+                torch.nn.ReLU(),
+                torch.nn.Linear(50, 1),
+        )
+
+        self.fc.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, torch.nn.Linear):
+            torch.nn.init.xavier_uniform(m.weight)
+            m.bias.data.fill_(0.01)
+
+    def forward(self, embed1, embed2):
+        
+        cat_embed = torch.add(embed1, embed2) / 2
+        cat_embed = self.fc(cat_embed)
+        cat_embed = torch.squeeze(cat_embed)
+
+        return cat_embed
+
+def pair_sampling(group_embeds, ids, number_samples, image_id, positive=True):
 
     r"""
 
@@ -43,13 +101,14 @@ def pair_sampling(group_embeds, ids, number_samples, positive=True):
             same id, people in group with size 1 have id = -1
         number_samples(int): number of sample for sampling for each data in batch
         positive (boolean): sampling positive or sampling negative
+        image_id: Tensor for id of image. We should sample person in same image
     Returns:
         embeds1 : Tensor number_samples x embed_dim
         embeds2 : Tensor number_samples x embed_dim
     """
-    return _pair_sampling(group_embeds, ids, number_samples, positive)
+    return _pair_sampling(group_embeds, ids, number_samples, image_id, positive)
 
-def _pair_sampling(group_embeds, ids, number_samples, positive=True):
+def _pair_sampling(group_embeds, ids, number_samples, image_id, positive=True):
     
     batch_size = group_embeds.shape[0]
     embed_dim = group_embeds.shape[1]
@@ -59,9 +118,9 @@ def _pair_sampling(group_embeds, ids, number_samples, positive=True):
     id_samples = None
 
     if positive:
-        id_samples = _positive_id_pair_generator(ids, number_samples)
+        id_samples = _positive_id_pair_generator(ids, number_samples, image_id)
     else:
-        id_samples = _negative_id_pair_generator(ids, number_samples)
+        id_samples = _negative_id_pair_generator(ids, number_samples, image_id)
     
     id_samples_1 = id_samples[:, 0].cpu().numpy()
     id_samples_2 = id_samples[:, 1].cpu().numpy()
@@ -71,7 +130,7 @@ def _pair_sampling(group_embeds, ids, number_samples, positive=True):
 
     return embeds1, embeds2
 
-def _positive_id_pair_generator(id_, number_samples):
+def _positive_id_pair_generator(id_, number_samples, image_id):
 
     r"""
     This function generates id positive pair for one image
@@ -79,6 +138,7 @@ def _positive_id_pair_generator(id_, number_samples):
     Args:
         id_: Tensor n x 1, saving group label for person
         number_samples: number of sampling we want to take
+        image_id: Tensor n x 1, saving image id.
     Return:
         Tensor number_samples x 2: positive pairs in one image
     """
@@ -99,7 +159,7 @@ def _positive_id_pair_generator(id_, number_samples):
     combinations = combinations[torch.randperm(combinations.size()[0])]
     return combinations[:number_samples,:]
 
-def _negative_id_pair_generator(id_, number_samples):
+def _negative_id_pair_generator(id_, number_samples, image_id):
     
     r"""
     This function generates id negative pair for one image
@@ -107,6 +167,7 @@ def _negative_id_pair_generator(id_, number_samples):
     Args:
         id_: Tensor n x 1, saving group label for person
         number_samples: number of sampling we want to take
+        image_id: Tensor n x 1, saving image id.
     Return:
         Tensor number_samples x 2: negative pairs in one image
     """
@@ -131,6 +192,9 @@ def _negative_id_pair_generator(id_, number_samples):
                 
                 for i1 in list_id_1.cpu().numpy():
                     for i2 in list_id_2.cpu().numpy():
+                        
+                        if image_id[i1] != image_id[i2]:
+                            continue
 
                         _combinations = torch.Tensor([[i1, i2]])
                         if combinations is None:
