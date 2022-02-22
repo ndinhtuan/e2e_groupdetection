@@ -15,7 +15,6 @@ from scipy import interpolate
 import numpy as np
 from torchvision.transforms import transforms as T
 from lib.models.model import create_group_model
-from lib.models.networks.group.simple_concat import SimpleConcat
 from models.model import create_model, load_model
 from datasets.dataset.jde import DetDataset, collate_fn
 from utils.utils import xywh2xyxy, ap_per_class, bbox_iou
@@ -70,7 +69,8 @@ def clustering(ids, embeds, group_model):
     print("EMBED SHAPE", embeds.shape)
     embeds1 = torch.Tensor(embeds[idx1])
     embeds2 = torch.Tensor(embeds[idx2])
-    predict = torch.sigmoid(group_model(embeds1, embeds2))
+    
+    predict = torch.sigmoid(group_model(embeds1, embeds2, torch.Tensor(embeds)))
     keep = predict > 0.5
     keep = keep.numpy()
     keep_idx1 = np.array(idx1)[keep]
@@ -195,8 +195,8 @@ def test_group(
     print('Creating model...')
     model = create_model(opt.arch, opt.heads, opt.head_conv)
     model = load_model(model, opt.load_model)
-    #model = torch.nn.DataParallel(model)
-    group_model = create_group_model(opt.group_arch, opt.group_embed_dim)
+
+    group_model = create_group_model(opt)
     group_model = load_model(group_model, opt.load_model_group)
     model = model.to(opt.device)
     model.eval()

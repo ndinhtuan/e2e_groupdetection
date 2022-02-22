@@ -44,6 +44,7 @@ class GroupDetLoss(torch.nn.Module):
             torch.nn.init.constant_(self.classifier.bias, bias_value)
         
         self.IDLoss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([opt.num_sample_negative/(opt.num_sample_negative + opt.num_sample_positive)*2]))
+        # self.IDLoss = nn.BCEWithLogitsLoss()
         self.s_det = nn.Parameter(-1.85 * torch.ones(1))
         self.s_id = nn.Parameter(-1.05 * torch.ones(1))
 
@@ -71,6 +72,9 @@ class GroupDetLoss(torch.nn.Module):
                 id_head = id_head[batch['reg_mask'] > 0].contiguous()
                 id_head =  F.normalize(id_head)
                 id_target = batch['fformation'][batch['reg_mask'] > 0]
+
+                # import IPython
+                # IPython.embed()
                 
                 # positive sampling
                 pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
@@ -86,8 +90,9 @@ class GroupDetLoss(torch.nn.Module):
                 neg_pred = self.group_model(neg_embeds1, neg_embeds2, id_head) \
                             if neg_embeds1 is not None and neg_embeds2 is not None else torch.tensor([])
 
-                # print("POS PRED", pos_pred.shape, pos_pred)
-                # print("NEG PRED", neg_pred.shape, neg_pred)
+                print("POS PRED", pos_pred.shape, pos_pred)
+                print("NEG PRED", neg_pred.shape, neg_pred)
+                print("="*10, "\n\n")
                 pos_shape = pos_pred.shape[0]
                 neg_shape = neg_pred.shape[0]
 

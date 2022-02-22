@@ -8,6 +8,8 @@ import torch.nn as nn
 import os
 
 from lib.models.networks.group.simple_concat import get_group_simple_concat
+from lib.models.networks.group.simple_sum import get_group_simple_sum
+from lib.models.networks.group.simple_average import get_group_simple_average
 from lib.models.networks.group.attention_concat import get_group_attention_concat
 
 
@@ -31,6 +33,8 @@ _model_factory = {
 
 _group_model_factory = {
   'simple_concat': get_group_simple_concat,
+  'simple_sum': get_group_simple_sum,
+  'simple_average': get_group_simple_average,
   'attn_concat': get_group_attention_concat
 }
 
@@ -41,9 +45,10 @@ def create_model(arch, heads, head_conv):
   model = get_model(num_layers=num_layers, heads=heads, head_conv=head_conv)
   return model
 
-def create_group_model(arch, embed_dim):
+def create_group_model(opt):
+  arch = opt.group_arch
   get_model = _group_model_factory[arch]
-  model = get_model(embed_dim)
+  model = get_model(opt)
   return model
 
 def load_model(model, model_path, optimizer=None, resume=False, 

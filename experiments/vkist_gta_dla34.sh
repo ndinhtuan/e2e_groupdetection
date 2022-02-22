@@ -1,7 +1,7 @@
 cd src
 python train.py group \
---exp_id crowdhuman_dla34 \
---group_arch 'simple_concat' \
+--exp_id crowdhuman_attention_concat \
+--group_arch 'attn_concat' \
 --group_embed_dim 128 \
 --gpus 0 --batch_size 10 \
 --num_epochs 80 \
@@ -12,6 +12,6 @@ python train.py group \
 --val_interval 0 \
 --num_sample_positive 16 \
 --num_sample_negative 16 \
---load_model "../exp/group/crowdhuman_dla34/model_9.pth" \
---load_model_group "../exp/group/crowdhuman_dla34/group_model_9.pth"
+--load_model "" \
+--load_model_group ""
 cd ..
