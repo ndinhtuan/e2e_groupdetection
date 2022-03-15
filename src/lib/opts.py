@@ -171,6 +171,9 @@ class opts(object):
     """
     Custom arguments
     """
+    self.parser.add_argument("--eval_save", help="save evaluated image to disk", type=bool, default=True)
+    self.parser.add_argument("--eval_dump_maxf1", help="threshold to dump evaluated image to disk", type=float, default=1.00)
+    self.parser.add_argument("--eval_group_ratio", help="ratio to evaluate group f1", type=float, default=2/3)
     self.parser.add_argument("--num_sample_positive", type=int, default=10)
     self.parser.add_argument("--num_sample_negative", type=int, default=10)
 

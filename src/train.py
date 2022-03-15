@@ -94,8 +94,8 @@ def main(opt):
     if opt.load_model_group != '':
         group_model = load_model(group_model, opt.load_model_group)
 
-    for param in model.parameters():
-        param.requires_grad = False
+    # for param in model.parameters():
+    #     param.requires_grad = False
 
     best_val_loss = 99999999999
     for epoch in range(start_epoch + 1, opt.num_epochs + 1):

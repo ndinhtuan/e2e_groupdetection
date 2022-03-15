@@ -6,7 +6,7 @@
     },
     "test":
     {
-        "gta_salsa_test": "/home/tungch/e2e_groupdetection/data/gta_dataset/fformation.test"
+        "gta_salsa_test": "/home/tungch/e2e_groupdetection/data/gta_dataset_h18r25/fformation.test"
     },
     "val":
     {

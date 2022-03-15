@@ -77,8 +77,14 @@ def clustering(ids, embeds, group_model):
     keep_idx2 = np.array(idx2)[keep]
 
     graph = [[0 for i in range(num_obj)] for j in range(num_obj)]
-    for i1, i2 in zip(keep_idx1, keep_idx2):
-        graph[i1][i2] = 1
+    try:
+        for i1, i2 in zip(keep_idx1, keep_idx2):
+            print("Positive edge", i1, i2)
+            graph[i1][i2] = 1
+    except Exception as e:
+        print(e)
+        import IPython
+        IPython.embed()
     graph = csr_matrix(graph)
     
     if num_obj == 0:
@@ -157,7 +163,7 @@ def save_group_test(ids, fformations, dets, img, file_path):
         fout.write(str(len(dets))+"\n")
         fout.write(str(dets))
 
-def compute_f1_score_group(preds, targets):
+def compute_f1_score_group(preds, targets, ratio=2/3):
     
     preds = [[[f"ID_00{_id}" for _id in pred] for pred in _preds] for _preds in preds]
     targets = [[
@@ -166,13 +172,18 @@ def compute_f1_score_group(preds, targets):
 
     avg_results = np.array([0.0,0.0])
     for pred, target in zip(preds, targets):
-        correctness = group_correctness(pred, target, 2/3, False)
+        correctness = group_correctness(pred, target, ratio, False)
         TP_n, FN_n, FP_n, precision, recall = correctness
         avg_results += np.array([precision, recall])
 
     avg_results /= len(preds)
-    f1_avg = float(2)* avg_results[0] * avg_results[1] / (avg_results[0] + avg_results[1])
+    p, r = avg_results[0], avg_results[1]
+    if p*r == 0:
+        f1_avg = 0
+    else:
+        f1_avg = float(2)* avg_results[0] * avg_results[1] / (avg_results[0] + avg_results[1])
     print(f"F1: {f1_avg} - precision: {avg_results[0]} - recall: {avg_results[1]}")
+    return f1_avg, avg_results[0], avg_results[1]
 
 def test_group(
         opt,
@@ -180,7 +191,8 @@ def test_group(
         img_size=(1088, 608),
         iou_thres=0.3,
         print_interval=40,
-        save_result=True):
+        save_result=True,
+        eval_dump_maxf1=1.00):
     data_cfg = opt.data_cfg
     f = open(data_cfg)
     data_cfg_dict = json.load(f)
@@ -342,19 +354,33 @@ def test_group(
                 matched_embeds = embeds[matched]
                 matched_dets = dets[matched]
                 list_detected = [int(i) for i in detected]
-                print("MATCHED", matched)
-                print("LIST DETECTED", list_detected)
-                print("MATCHED EMBEDES", matched_embeds.shape)
-                print("DETS", dets.shape)
-                print("MATCHED DETS", matched_dets.shape)
+                # print("MATCHED", matched)
+                # print("LIST DETECTED", list_detected)
+                # print("MATCHED EMBEDES", matched_embeds.shape)
+                # print("DETS", dets.shape)
+                # print("MATCHED DETS", matched_dets.shape)
                 cluster = clustering(list_detected, matched_embeds, group_model)
                 pred_fformation_indexs.append(cluster)
                 if save_result:
                     path = paths[si]
                     img = cv2.imread(path)
-                    path = "{}/{}".format(path_saving_dir, os.path.basename(path))
                     id_dir += 1
-                    save_group_test(list_detected, cluster, matched_dets, img, path)
+                    gt_cluster = [fformation_index[k] for k in fformation_index]
+                    # print("GT CLUSTER", gt_cluster)
+                    f1, _, _ = compute_f1_score_group([cluster], [gt_cluster], ratio=opt.eval_group_ratio)
+                    if f1 <= eval_dump_maxf1:
+                        path = "{}/{}".format(path_saving_dir, f"{f1}F1_{os.path.basename(path)}")
+                        print(f"F1={f1}. Saving error image to {path}")
+                        # print("SI", si)
+                        # print("FF INDEX", fformation_indexs)
+                        # print("FULL GT SIZE", len(gt_fformation_indexs))
+                        # print("PRED CLUSTER", cluster)
+                        # print("GT CLUSTER", gt_fformation_indexs[si])
+                        # print("FFORMATION INDEX", fformation_index)
+                        # print("FULL GT", gt_fformation_indexs, len(gt_fformation_indexs))
+                        # import IPython
+                        # IPython.embed()
+                        save_group_test(list_detected, cluster, matched_dets, img, path)
 
             # Compute Average Precision (AP) per class
             AP, AP_class, R, P = ap_per_class(tp=correct,
@@ -384,17 +410,18 @@ def test_group(
     print("pred_fformation_indexs: ", pred_fformation_indexs, len(pred_fformation_indexs))
     print("gt_fformation_indexs: ", gt_fformation_indexs, len(gt_fformation_indexs))
     print("F1 score group: ")
-    compute_f1_score_group(pred_fformation_indexs, gt_fformation_indexs); exit()
+    compute_f1_score_group(pred_fformation_indexs, gt_fformation_indexs, ratio=opt.eval_group_ratio)
     # Print mAP per class
     print('%11s' * 5 % ('Image', 'Total', 'P', 'R', 'mAP'))
 
     print('AP: %-.4f\n\n' % (AP_accum[0] / (AP_accum_count[0] + 1E-16)))
+    print("AP ACCUM", AP_accum)
+    print("mAP/R/P", mean_mAP, mean_R, mean_P)
 
-    # Return mAP
     return mean_mAP, mean_R, mean_P
 
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     opt = opts().init()
     with torch.no_grad():
-        map = test_group(opt, batch_size=4)
+        map = test_group(opt, batch_size=opt.batch_size, save_result=opt.eval_save, eval_dump_maxf1=opt.eval_dump_maxf1)

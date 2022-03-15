@@ -12,11 +12,22 @@ class GroupDotSelfAttention(torch.nn.Module):
         query1 = embeds1.unsqueeze(1)
         query2 = embeds2.unsqueeze(1)
         kv = torch.repeat_interleave(id_head.unsqueeze(0), query2.shape[0], dim=0) # repeat to add batch dimension as query 
+
+        print("Query1", query1.shape)
+        print("Query2", query2.shape)
         
-        attn_output1, _ = self.attn(query1, kv, kv) 
-        attn_output2, _ = self.attn(query2, kv, kv) 
+        try:
+            attn_output1, _ = self.attn(query1, kv, kv) 
+            attn_output2, _ = self.attn(query2, kv, kv) 
+
+            print("Attn1", attn_output1.shape)
+            print("Attn2", attn_output2.shape)
         
-        output = self.cls(attn_output1.squeeze(), attn_output2.squeeze())
+            output = self.cls(attn_output1.squeeze(1), attn_output2.squeeze(1))
+        except:
+            import IPython
+            IPython.embed()
+
         return output
         
 

@@ -569,13 +569,17 @@ class DetDataset(LoadImagesAndLabels):  # for training
             if labels[i, 1] > -1:
                 labels[i, 1] += self.tid_start_index[ds]
 
+        # print("GET ITEM", files_index)
+        # import IPython
+        # IPython.embed()
         return imgs, labels0, img_path, (h, w), fformation_index
     
     def _get_fformation_index(self, label):
         
         group_id = label[:, 1]
         unique_val = np.unique(group_id)
-        unique_val = unique_val[unique_val>0]
+        unique_val = unique_val[unique_val>-1]
+        # unique_val = unique_val[unique_val>0]
 
         fformation_index = dict()
         for val in unique_val:
