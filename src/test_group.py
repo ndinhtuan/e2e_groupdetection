@@ -85,20 +85,20 @@ def clustering(ids, embeds, group_model):
         print(e)
         import IPython
         IPython.embed()
-    graph = csr_matrix(graph)
+    cs_graph = csr_matrix(graph)
     
     if num_obj == 0:
         print("GRAPH IS NULL")
         return []
 
-    n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
+    n_components, labels = connected_components(csgraph=cs_graph, directed=False, return_labels=True)
     unique_label = np.unique(labels)
     
     res = []
     for label_ in unique_label:
         res.append(list(np.array(ids)[labels==label_]))
 
-    return res
+    return res, graph 
 
 COLORS = [
     (0,0,0),
@@ -131,34 +131,49 @@ COLORS = [
     (0,192,192),
     (0,0,192)
 ]
-def save_group_test(ids, fformations, dets, img, file_path):
-    
+def save_group_test(ids, fformations, dets, img, file_path, pred_graph, gt_cluster, show_group_boxes=True, show_group_links=True):
     id_dict = dict()
 
     for i, fformation in enumerate(fformations):
         for id_ in fformation:
             id_dict[id_] = i
     print(id_dict, ids)
-    boxes = []
-    for t in range(len(dets)):
 
-        id_ = ids[t]
-        color_id = id_dict[id_]
-        print(color_id, "color_id")
-        x1 = dets[t, 0]
-        y1 = dets[t, 1]
-        x2 = dets[t, 2]
-        y2 = dets[t, 3]
-        x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
-
-        # cv2.rectangle(img, (x1, y1), (x2, y2), (10+color_id*30, 10+color_id*30, color_id*30), 4)
-        boxes.append((x1, x2, y1, y2))
-        cv2.rectangle(img, (x1, y1), (x2, y2), COLORS[color_id], 4)
-    
+    if show_group_links or show_group_boxes:
+        total_links, total_boxes = 0, 0
+        for t in range(len(dets)):
+            id_ = ids[t]
+            color_id = id_dict[id_]
+            print(color_id, "color_id")
+            x1 = dets[t, 0]
+            y1 = dets[t, 1]
+            x2 = dets[t, 2]
+            y2 = dets[t, 3]
+            x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
+            line_start_x, line_start_y = int((x1 + x2) / 2), int(y2)
+            
+            if show_group_boxes:
+                cv2.rectangle(img, (x1, y1), (x2, y2), COLORS[color_id], 4)
+                cv2.circle(img, (line_start_x, line_start_y), radius=8, thickness=-1, color=COLORS[color_id])
+                total_boxes += 1
+            if show_group_links:
+                for u in range(t+1, len(dets)):
+                    if pred_graph[t][u] == 0:
+                        continue
+                    id_ = ids[t]
+                    next_x1, next_y1, next_x2, next_y2, _ = dets[u]
+                    next_x1, next_y1, next_x2, next_y2 = int(next_x1), int(next_y1), int(next_x2), int(next_y2)
+                    line_end_x, line_end_y = int((next_x1 + next_x2) / 2), int(next_y2)
+                    
+                    cv2.circle(img, (line_end_x, line_end_y), radius=8, thickness=-1, color=COLORS[color_id])
+                    total_links += 1
+                    cv2.line(img, (line_start_x, line_start_y), (line_end_x, line_end_y), COLORS[color_id], 1) 
     bbox_file_path = file_path + ".bbox.txt"
     print("Saving image in ", file_path)
     cv2.imwrite(file_path, img)
     print("Saving bbox in ", bbox_file_path)
+    print(f"Total boxes: {total_boxes}; Total links: {total_links}")
+
     with open(bbox_file_path, "w") as fout:
         fout.write(str(len(dets))+"\n")
         fout.write(str(dets))
@@ -359,7 +374,7 @@ def test_group(
                 # print("MATCHED EMBEDES", matched_embeds.shape)
                 # print("DETS", dets.shape)
                 # print("MATCHED DETS", matched_dets.shape)
-                cluster = clustering(list_detected, matched_embeds, group_model)
+                cluster, graph = clustering(list_detected, matched_embeds, group_model)
                 pred_fformation_indexs.append(cluster)
                 if save_result:
                     path = paths[si]
@@ -371,16 +386,7 @@ def test_group(
                     if f1 <= eval_dump_maxf1:
                         path = "{}/{}".format(path_saving_dir, f"{f1}F1_{os.path.basename(path)}")
                         print(f"F1={f1}. Saving error image to {path}")
-                        # print("SI", si)
-                        # print("FF INDEX", fformation_indexs)
-                        # print("FULL GT SIZE", len(gt_fformation_indexs))
-                        # print("PRED CLUSTER", cluster)
-                        # print("GT CLUSTER", gt_fformation_indexs[si])
-                        # print("FFORMATION INDEX", fformation_index)
-                        # print("FULL GT", gt_fformation_indexs, len(gt_fformation_indexs))
-                        # import IPython
-                        # IPython.embed()
-                        save_group_test(list_detected, cluster, matched_dets, img, path)
+                        save_group_test(list_detected, cluster, matched_dets, img, path, pred_graph=graph, gt_cluster=gt_cluster, show_group_boxes=opt.eval_show_group_boxes, show_group_links=opt.eval_show_group_links)
 
             # Compute Average Precision (AP) per class
             AP, AP_class, R, P = ap_per_class(tp=correct,
@@ -425,3 +431,4 @@ if __name__ == '__main__':
     opt = opts().init()
     with torch.no_grad():
         map = test_group(opt, batch_size=opt.batch_size, save_result=opt.eval_save, eval_dump_maxf1=opt.eval_dump_maxf1)
+
