@@ -4,13 +4,14 @@ from __future__ import print_function
 
 import torch
 
-class SimpleConcat(torch.nn.Module):
+class SimpleAvg(torch.nn.Module):
+
     def __init__(self, opt):
-        super(SimpleConcat, self).__init__()
+        super(SimpleAvg, self).__init__()
         self.embed_dim = opt.group_embed_dim
 
         self.fc = torch.nn.Sequential(
-                torch.nn.Linear(2*self.embed_dim, 100),
+                torch.nn.Linear(self.embed_dim, 100),
                 torch.nn.ReLU(),
                 torch.nn.Linear(100, 50),
                 torch.nn.ReLU(),
@@ -25,14 +26,12 @@ class SimpleConcat(torch.nn.Module):
             m.bias.data.fill_(0.01)
 
     def forward(self, embed1, embed2, *args):
-        cat_embed = torch.cat((embed1, embed2), 1)
-
+        
+        cat_embed = torch.add(embed1, embed2) / 2
         cat_embed = self.fc(cat_embed)
-
-        cat_embed = torch.squeeze(cat_embed, 1)
+        cat_embed = torch.squeeze(cat_embed)
 
         return cat_embed
 
-
-def get_group_simple_concat(opt):
-    return SimpleConcat(opt)
+def get_group_simple_average(opt):
+    return SimpleAvg(opt)

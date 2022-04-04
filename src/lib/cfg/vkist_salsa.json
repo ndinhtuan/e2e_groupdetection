@@ -1,0 +1,15 @@
+{
+    "root":"",
+    "train":
+    {
+        "gta_salsa_train":"/home/tungch/e2e_groupdetection/data/salsa_dataset/fformation.train"
+    },
+    "test":
+    {
+        "gta_salsa_test": "/home/tungch/e2e_groupdetection/data/salsa_dataset/fformation.test"
+    },
+    "val":
+    {
+        "gta_salsa_test": "/home/tungch/e2e_groupdetection/data/salsa_dataset/fformation.val"
+    }
+}

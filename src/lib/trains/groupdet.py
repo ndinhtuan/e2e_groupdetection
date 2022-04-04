@@ -43,7 +43,9 @@ class GroupDetLoss(torch.nn.Module):
             bias_value = -math.log((1 - prior_prob) / prior_prob)
             torch.nn.init.constant_(self.classifier.bias, bias_value)
         
-        self.IDLoss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([opt.num_sample_negative/(opt.num_sample_negative + opt.num_sample_positive)*2]))
+        # self.IDLoss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.2]))
+        self.IDLoss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([opt.num_sample_negative/opt.num_sample_positive]))
+        # self.IDLoss = nn.BCEWithLogitsLoss()
         self.s_det = nn.Parameter(-1.85 * torch.ones(1))
         self.s_id = nn.Parameter(-1.05 * torch.ones(1))
 
@@ -71,6 +73,9 @@ class GroupDetLoss(torch.nn.Module):
                 id_head = id_head[batch['reg_mask'] > 0].contiguous()
                 id_head =  F.normalize(id_head)
                 id_target = batch['fformation'][batch['reg_mask'] > 0]
+
+                # import IPython
+                # IPython.embed()
                 
                 # positive sampling
                 pos_embeds1, pos_embeds2 = pair_sampling(id_head, id_target, \
@@ -82,12 +87,15 @@ class GroupDetLoss(torch.nn.Module):
 
                 
                 pos_pred = self.group_model(pos_embeds1, pos_embeds2, id_head) \
-                            if pos_embeds1 is not None and pos_embeds2 is not None else torch.tensor([])
+                            if pos_embeds1 is not None and pos_embeds2 is not None and pos_embeds1.shape[0] > 0 and pos_embeds2.shape[0] > 0 \
+                            else torch.tensor([])
                 neg_pred = self.group_model(neg_embeds1, neg_embeds2, id_head) \
-                            if neg_embeds1 is not None and neg_embeds2 is not None else torch.tensor([])
+                            if neg_embeds1 is not None and neg_embeds2 is not None and pos_embeds1.shape[0] > 0 and pos_embeds2.shape[0] > 0 \
+                            else torch.tensor([])
 
                 # print("POS PRED", pos_pred.shape, pos_pred)
                 # print("NEG PRED", neg_pred.shape, neg_pred)
+                # print("="*10, "\n\n")
                 pos_shape = pos_pred.shape[0]
                 neg_shape = neg_pred.shape[0]
 
@@ -106,7 +114,10 @@ class GroupDetLoss(torch.nn.Module):
                 preds = torch.unsqueeze(preds, dim=-1).cuda()
                 labels = torch.unsqueeze(labels, dim=-1).cuda()
 
-                id_loss = id_loss + self.IDLoss(preds, labels)
+                if output_shape != 0:
+                    id_loss = id_loss + self.IDLoss(preds, labels)
+                else:
+                    id_loss = id_loss + torch.tensor([0])
 
         det_loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + opt.off_weight * off_loss
         if opt.multi_loss == 'uncertainty':

@@ -171,6 +171,14 @@ class opts(object):
     """
     Custom arguments
     """
+    self.parser.add_argument("--eval_save", help="save evaluated image to disk", type=bool, default=True)
+    self.parser.add_argument("--eval_dump_maxf1", help="threshold to dump evaluated image to disk", type=float, default=1.00)
+    self.parser.add_argument("--eval_group_ratio", help="ratio to evaluate group f1", type=float, default=2/3)
+    self.parser.add_argument("--eval_show_group_boxes", help="visualize ground truth links between items in fformation", default=True)
+    self.parser.add_argument("--eval_show_group_links", help="visualize ground truth links between items in fformation", default=True)
+    self.parser.add_argument("--eval_link_threshold", help="threshold of link prediction", type=float, default=0.5)
+    self.parser.add_argument("--eval_highly_connected_rate", help="ratio of edges to be delete to split graph", type=float, default=0.3)
+    self.parser.add_argument("--eval_clustering_algorithm", help="clustering algorithm, [conected_component, graph_cut]", type=str, default="connected_component")
     self.parser.add_argument("--num_sample_positive", type=int, default=10)
     self.parser.add_argument("--num_sample_negative", type=int, default=10)
 

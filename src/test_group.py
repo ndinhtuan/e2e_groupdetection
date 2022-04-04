@@ -2,8 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import networkx as nx
 import _init_paths
 import argparse
+from hcs import labelled_HCS
 import torch
 import json
 import time
@@ -15,7 +17,6 @@ from scipy import interpolate
 import numpy as np
 from torchvision.transforms import transforms as T
 from lib.models.model import create_group_model
-from lib.models.networks.group.simple_concat import SimpleConcat
 from models.model import create_model, load_model
 from datasets.dataset.jde import DetDataset, collate_fn
 from utils.utils import xywh2xyxy, ap_per_class, bbox_iou
@@ -55,7 +56,8 @@ def merge_outputs(opt, detections):
             results[j] = results[j][keep_inds]
     return results
 
-def clustering(ids, embeds, group_model):
+# Clustering algorithm: ["connected_component", "graph_cut"]
+def clustering(ids, embeds, group_model, link_threshold=0.5, clustering_algorithm="connected_component", highly_connected_rate=0.3):
     
     idx1 = []
     idx2 = []
@@ -67,32 +69,85 @@ def clustering(ids, embeds, group_model):
             idx1.append(i)
             idx2.append(j)
 
-    print("EMBED SHAPE", embeds.shape)
     embeds1 = torch.Tensor(embeds[idx1])
     embeds2 = torch.Tensor(embeds[idx2])
-    predict = torch.sigmoid(group_model(embeds1, embeds2))
+    
+    predict = torch.sigmoid(group_model(embeds1, embeds2, torch.Tensor(embeds)))
     keep = predict > 0.5
     keep = keep.numpy()
     keep_idx1 = np.array(idx1)[keep]
     keep_idx2 = np.array(idx2)[keep]
 
     graph = [[0 for i in range(num_obj)] for j in range(num_obj)]
-    for i1, i2 in zip(keep_idx1, keep_idx2):
-        graph[i1][i2] = 1
-    graph = csr_matrix(graph)
+    try:
+        # for i1, i2 in zip(keep_idx1, keep_idx2):
+        #     print("Positive edge", i1, i2)
+        #     graph[i1][i2] = 1
+        for idx, (i1, i2) in enumerate(zip(idx1, idx2)):
+            graph[i1][i2] = int(predict[idx] >= link_threshold)
+    except Exception as e:
+        print(e)
+        import IPython
+        IPython.embed()
     
     if num_obj == 0:
         print("GRAPH IS NULL")
         return []
 
-    n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
+    if clustering_algorithm == "graph_cut":
+        cs_graph = csr_matrix(graph)
+        n_components, labels = connected_components(csgraph=cs_graph, directed=False, return_labels=True)
+
+        matrixs, groups = {}, {}, 
+        for idx, item in enumerate(labels):
+            if item not in groups:
+                groups[item] = []
+            groups[item].append(idx)
+        
+        for idx in groups:
+            aff = []
+            for item1 in groups[idx]:
+                row = []
+                for item2 in groups[idx]:
+                    row.append(graph[item1][item2])
+                aff.append(row)
+            matrixs[idx] = aff
+        
+        # Loop through connected components, get new strong connected components
+        group_strong_cc, group_offsets = {}, {}
+        for group_idx in matrixs:
+            group_strong_cc[group_idx] = labelled_HCS(
+                nx.from_numpy_matrix(np.array(matrixs[group_idx])),
+                highly_connected_rate=highly_connected_rate
+            )
+            group_strong_cc[group_idx] -= 1 # minus 1 to change index offset from 1 to 0
+            if group_idx > 0:
+                group_offsets[group_idx] = len(np.unique(group_strong_cc[group_idx-1])) + group_offsets[group_idx-1]
+            else:
+                group_offsets[group_idx] = 0
+        
+        print("OLD", labels)
+        # Update group index
+        for group_idx in groups:
+            for item_idx, item in enumerate(groups[group_idx]):
+                labels[item] = labels[item] + group_offsets[group_idx] + group_strong_cc[group_idx][item_idx]
+        print("NEW", labels)
+        # import IPython
+        # IPython.embed()
+    else: # connected component
+        cs_graph = csr_matrix(graph)
+        n_components, labels = connected_components(csgraph=cs_graph, directed=False, return_labels=True)
     unique_label = np.unique(labels)
     
     res = []
     for label_ in unique_label:
         res.append(list(np.array(ids)[labels==label_]))
 
-    return res
+    # import IPython
+    # IPython.embed()
+    return res, graph
+    # res: list of group. Example: [[1,2,4], [3,5,6], ...]
+    # graph: adjacent matrix. Example: [[0,1,0], [1,0,1], [1,0,0]]
 
 COLORS = [
     (0,0,0),
@@ -125,39 +180,63 @@ COLORS = [
     (0,192,192),
     (0,0,192)
 ]
-def save_group_test(ids, fformations, dets, img, file_path):
-    
+def save_group_test(ids, fformations, dets, img, file_path, pred_graph, gt_cluster, gt_boxes, show_gt_boxes=True, show_group_boxes=True, show_group_links=True):
     id_dict = dict()
+
+    if show_gt_boxes:
+        for cluster_idx, cluster in enumerate(gt_cluster):
+            for idx in cluster:
+                x1, y1, x2, y2 = gt_boxes[idx]
+                x1, y1, x2, y2 = int(x1-1), int(y1-1), int(x2+1), int(y2+1)
+                cv2.rectangle(img, (x1, y1), (x2, y2), COLORS[cluster_idx], 1) 
 
     for i, fformation in enumerate(fformations):
         for id_ in fformation:
             id_dict[id_] = i
     print(id_dict, ids)
-    boxes = []
-    for t in range(len(dets)):
 
-        id_ = ids[t]
-        color_id = id_dict[id_]
-        print(color_id, "color_id")
-        x1 = dets[t, 0]
-        y1 = dets[t, 1]
-        x2 = dets[t, 2]
-        y2 = dets[t, 3]
-        x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
-
-        # cv2.rectangle(img, (x1, y1), (x2, y2), (10+color_id*30, 10+color_id*30, color_id*30), 4)
-        boxes.append((x1, x2, y1, y2))
-        cv2.rectangle(img, (x1, y1), (x2, y2), COLORS[color_id], 4)
-    
+    if show_group_links or show_group_boxes:
+        total_links, total_boxes = 0, 0
+        for t in range(len(dets)):
+            id_ = ids[t]
+            color_id = id_dict[id_]
+            print(color_id, "color_id")
+            x1 = dets[t, 0]
+            y1 = dets[t, 1]
+            x2 = dets[t, 2]
+            y2 = dets[t, 3]
+            x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
+            line_start_x, line_start_y = int((x1 + x2) / 2), int(y2)
+            
+            if show_group_boxes:
+                cv2.rectangle(img, (x1, y1), (x2, y2), COLORS[color_id], 4)
+                cv2.circle(img, (line_start_x, line_start_y), radius=8, thickness=-1, color=COLORS[color_id])
+                total_boxes += 1
+            if show_group_links:
+                for u in range(t+1, len(dets)):
+                    if pred_graph[t][u] == 0:
+                        continue
+                    id_ = ids[t]
+                    next_x1, next_y1, next_x2, next_y2, _ = dets[u]
+                    next_x1, next_y1, next_x2, next_y2 = int(next_x1), int(next_y1), int(next_x2), int(next_y2)
+                    line_end_x, line_end_y = int((next_x1 + next_x2) / 2), int(next_y2)
+                    
+                    cv2.circle(img, (line_end_x, line_end_y), radius=8, thickness=-1, color=COLORS[color_id])
+                    total_links += 1
+                    cv2.line(img, (line_start_x, line_start_y), (line_end_x, line_end_y), COLORS[color_id], 1) 
     bbox_file_path = file_path + ".bbox.txt"
     print("Saving image in ", file_path)
     cv2.imwrite(file_path, img)
     print("Saving bbox in ", bbox_file_path)
+    print(f"Total boxes: {total_boxes}; Total links: {total_links}")
+
     with open(bbox_file_path, "w") as fout:
         fout.write(str(len(dets))+"\n")
         fout.write(str(dets))
+#    import IPython
+#    IPython.embed()
 
-def compute_f1_score_group(preds, targets):
+def compute_f1_score_group(preds, targets, ratio=2/3):
     
     preds = [[[f"ID_00{_id}" for _id in pred] for pred in _preds] for _preds in preds]
     targets = [[
@@ -166,13 +245,18 @@ def compute_f1_score_group(preds, targets):
 
     avg_results = np.array([0.0,0.0])
     for pred, target in zip(preds, targets):
-        correctness = group_correctness(pred, target, 2/3, False)
+        correctness = group_correctness(pred, target, ratio, False)
         TP_n, FN_n, FP_n, precision, recall = correctness
         avg_results += np.array([precision, recall])
 
     avg_results /= len(preds)
-    f1_avg = float(2)* avg_results[0] * avg_results[1] / (avg_results[0] + avg_results[1])
+    p, r = avg_results[0], avg_results[1]
+    if p*r == 0:
+        f1_avg = 0
+    else:
+        f1_avg = float(2)* avg_results[0] * avg_results[1] / (avg_results[0] + avg_results[1])
     print(f"F1: {f1_avg} - precision: {avg_results[0]} - recall: {avg_results[1]}")
+    return f1_avg, avg_results[0], avg_results[1]
 
 def test_group(
         opt,
@@ -180,7 +264,8 @@ def test_group(
         img_size=(1088, 608),
         iou_thres=0.3,
         print_interval=40,
-        save_result=True):
+        save_result=True,
+        eval_dump_maxf1=1.00):
     data_cfg = opt.data_cfg
     f = open(data_cfg)
     data_cfg_dict = json.load(f)
@@ -195,8 +280,8 @@ def test_group(
     print('Creating model...')
     model = create_model(opt.arch, opt.heads, opt.head_conv)
     model = load_model(model, opt.load_model)
-    #model = torch.nn.DataParallel(model)
-    group_model = create_group_model(opt.group_arch, opt.group_embed_dim)
+
+    group_model = create_group_model(opt)
     group_model = load_model(group_model, opt.load_model_group)
     model = model.to(opt.device)
     model.eval()
@@ -342,19 +427,24 @@ def test_group(
                 matched_embeds = embeds[matched]
                 matched_dets = dets[matched]
                 list_detected = [int(i) for i in detected]
-                print("MATCHED", matched)
-                print("LIST DETECTED", list_detected)
-                print("MATCHED EMBEDES", matched_embeds.shape)
-                print("DETS", dets.shape)
-                print("MATCHED DETS", matched_dets.shape)
-                cluster = clustering(list_detected, matched_embeds, group_model)
+                # print("MATCHED", matched)
+                # print("LIST DETECTED", list_detected)
+                # print("MATCHED EMBEDES", matched_embeds.shape)
+                # print("DETS", dets.shape)
+                # print("MATCHED DETS", matched_dets.shape)
+                cluster, graph = clustering(list_detected, matched_embeds, group_model, link_threshold=opt.eval_link_threshold, clustering_algorithm=opt.eval_clustering_algorithm, highly_connected_rate=opt.eval_highly_connected_rate)
                 pred_fformation_indexs.append(cluster)
                 if save_result:
                     path = paths[si]
                     img = cv2.imread(path)
-                    path = "{}/{}".format(path_saving_dir, os.path.basename(path))
                     id_dir += 1
-                    save_group_test(list_detected, cluster, matched_dets, img, path)
+                    gt_cluster = [fformation_index[k] for k in fformation_index]
+                    # print("GT CLUSTER", gt_cluster)
+                    f1, _, _ = compute_f1_score_group([cluster], [gt_cluster], ratio=opt.eval_group_ratio)
+                    if f1 <= eval_dump_maxf1:
+                        path = "{}/{}".format(path_saving_dir, f"{f1}F1_{os.path.basename(path)}")
+                        print(f"F1={f1}. Saving error image to {path}")
+                        save_group_test(list_detected, cluster, matched_dets, img, path, pred_graph=graph, gt_boxes=target_boxes, gt_cluster=gt_cluster, show_group_boxes=opt.eval_show_group_boxes, show_group_links=opt.eval_show_group_links)
 
             # Compute Average Precision (AP) per class
             AP, AP_class, R, P = ap_per_class(tp=correct,
@@ -384,17 +474,19 @@ def test_group(
     print("pred_fformation_indexs: ", pred_fformation_indexs, len(pred_fformation_indexs))
     print("gt_fformation_indexs: ", gt_fformation_indexs, len(gt_fformation_indexs))
     print("F1 score group: ")
-    compute_f1_score_group(pred_fformation_indexs, gt_fformation_indexs); exit()
+    compute_f1_score_group(pred_fformation_indexs, gt_fformation_indexs, ratio=opt.eval_group_ratio)
     # Print mAP per class
     print('%11s' * 5 % ('Image', 'Total', 'P', 'R', 'mAP'))
 
     print('AP: %-.4f\n\n' % (AP_accum[0] / (AP_accum_count[0] + 1E-16)))
+    print("AP ACCUM", AP_accum)
+    print("mAP/R/P", mean_mAP, mean_R, mean_P)
 
-    # Return mAP
     return mean_mAP, mean_R, mean_P
 
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     opt = opts().init()
     with torch.no_grad():
-        map = test_group(opt, batch_size=4)
+        map = test_group(opt, batch_size=opt.batch_size, save_result=opt.eval_save, eval_dump_maxf1=opt.eval_dump_maxf1)
+
