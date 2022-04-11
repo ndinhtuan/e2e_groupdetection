@@ -187,7 +187,7 @@ class LoadImagesAndLabels:  # for training
         if os.path.isfile(label_path):
             # labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
             labels0 = np.loadtxt(label_path, dtype=np.float32)
-            labels0 = labels0.reshape(-1, 6)[:,:6]
+            labels0 = labels0.reshape(-1, 23)[:,:6]
 
             # Normalized xywh to pixel xyxy format
             labels = labels0.copy()
@@ -560,7 +560,7 @@ class DetDataset(LoadImagesAndLabels):  # for training
             # labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
             labels0 = np.loadtxt(label_path, dtype=np.float32)
             print("labels0: ", labels0, labels0.shape)
-            labels0 = labels0.reshape(-1, 6)[:,:6]
+            labels0 = labels0.reshape(-1, 23)[:,:6]
 
 
         
@@ -570,9 +570,6 @@ class DetDataset(LoadImagesAndLabels):  # for training
             if labels[i, 1] > -1:
                 labels[i, 1] += self.tid_start_index[ds]
 
-        # print("GET ITEM", files_index)
-        # import IPython
-        # IPython.embed()
         return imgs, labels0, img_path, (h, w), fformation_index
     
     def _get_fformation_index(self, label):

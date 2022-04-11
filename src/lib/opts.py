@@ -172,6 +172,9 @@ class opts(object):
     """
     Custom arguments
     """
+    self.parser.add_argument("--input_width", help="Image input width", type=int, default=1088)
+    self.parser.add_argument("--input_height", help="Image input height", type=int, default=608)
+    self.parser.add_argument("--detection_threshold", help="Threshold for accepting a bounding box detection", type=float, default=0.1)
     self.parser.add_argument("--eval_save", help="save evaluated image to disk", type=bool, default=True)
     self.parser.add_argument("--eval_dump_maxf1", help="threshold to dump evaluated image to disk", type=float, default=1.00)
     self.parser.add_argument("--eval_group_ratio", help="ratio to evaluate group f1", type=float, default=2/3)
