@@ -347,8 +347,6 @@ def test_group(
 
         # id_feature = id_feature.squeeze(0)
         id_feature = id_feature.cpu().numpy()
-        print("Detections: ", detections.shape)
-        print("id_feature: ", id_feature.shape)
 
 
         # Compute average precision for each sample
@@ -361,12 +359,8 @@ def test_group(
             embeds = id_feature[si]
             fformation_index = fformation_indexs[si]
             dets = dets.unsqueeze(0)
-            print("dets: ", dets.shape)
             dets = post_process(opt, dets, meta)
             dets = merge_outputs(opt, [dets])[1]
-            print("dets: ", dets.shape)
-            print("embeds: ", embeds.shape)
-            #exit()
 
             #remain_inds = dets[:, 4] > opt.det_thres
             #dets = dets[remain_inds]
@@ -432,8 +426,6 @@ def test_group(
                 
                 matched_embeds = embeds[matched]
                 matched_dets = dets[matched]
-                print(matched_embeds.shape)
-                print("matched_dets: ", matched_dets.shape); exit()
                 list_detected = [int(i) for i in detected]
                 # print("MATCHED", matched)
                 # print("LIST DETECTED", list_detected)

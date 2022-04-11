@@ -14,11 +14,12 @@ class opts(object):
     self.parser.add_argument('--dataset', default='jde', help='jde')
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
-    self.parser.add_argument('--load_model', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/model_last.pth',
+    self.parser.add_argument('--test_video_path', type=str, default="/data/tuannd/fformation/stream/output.avi")
+    self.parser.add_argument('--load_model', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/model_best.pth',
                              #help='path to pretrained model')
     #self.parser.add_argument('--load_model', default='',
                              help='path to pretrained model')
-    self.parser.add_argument('--load_model_group', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_last.pth',
+    self.parser.add_argument('--load_model_group', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_best.pth',
                              help='path to pretrained group model')
     self.parser.add_argument('--resume', action='store_true',
                              help='resume an experiment. '

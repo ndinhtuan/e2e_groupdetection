@@ -187,7 +187,7 @@ class LoadImagesAndLabels:  # for training
         if os.path.isfile(label_path):
             # labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
             labels0 = np.loadtxt(label_path, dtype=np.float32)
-            labels0 = labels0.reshape(-1, 23)[:,:6]
+            labels0 = labels0.reshape(-1, 6)[:,:6]
 
             # Normalized xywh to pixel xyxy format
             labels = labels0.copy()
@@ -559,7 +559,8 @@ class DetDataset(LoadImagesAndLabels):  # for training
         if os.path.isfile(label_path):
             # labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
             labels0 = np.loadtxt(label_path, dtype=np.float32)
-            labels0 = labels0.reshape(-1, 23)[:,:6]
+            print("labels0: ", labels0, labels0.shape)
+            labels0 = labels0.reshape(-1, 6)[:,:6]
 
 
         
