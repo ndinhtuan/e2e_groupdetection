@@ -175,7 +175,7 @@ COLORS = [
     (192,0,192),
     (0,192,192),
     (0,0,192)
-]
+]*100
 
 def draw_prediction(ids, fformations, dets, img, pred_graph, show_group_boxes=True, show_group_links=False):
     id_dict = dict()
@@ -183,14 +183,12 @@ def draw_prediction(ids, fformations, dets, img, pred_graph, show_group_boxes=Tr
     for i, fformation in enumerate(fformations):
         for id_ in fformation:
             id_dict[id_] = i
-    print(id_dict, ids)
 
     if show_group_links or show_group_boxes:
         total_links, total_boxes = 0, 0
         for t in range(len(dets)):
             id_ = ids[t]
             color_id = id_dict[id_]
-            print(color_id, "color_id")
             x1 = dets[t, 0]
             y1 = dets[t, 1]
             x2 = dets[t, 2]
@@ -228,8 +226,8 @@ def predict_image(opt, model, group_model, img):
     origin_shape = img0.shape
     width = origin_shape[1]
     height = origin_shape[0]
-    inp_height = 608
-    inp_width = 1088
+    inp_height = opt.input_height
+    inp_width = opt.input_width 
     c = np.array([width / 2., height / 2.], dtype=np.float32)
     s = max(float(inp_width) / float(inp_height) * height, width) * 1.0
     meta = {'c': c, 's': s,
@@ -253,15 +251,17 @@ def predict_image(opt, model, group_model, img):
     id_feature = id_feature.cpu().numpy()
 
     #print(dets.shape, id_feature.shape); exit()
-
+    id_feature = id_feature[:20]
+    list_id = list_id[:20]
+    dets = dets[:20]
     cluster, graph = clustering(list_id, id_feature, group_model, \
             link_threshold=opt.eval_link_threshold, clustering_algorithm=\
             opt.eval_clustering_algorithm, highly_connected_rate=opt.eval_highly_connected_rate)
-
+    import IPython
+    IPython.embed()
     return draw_prediction(list_id, cluster, dets, img0, graph)
 
 def predict_group(opt):
-    
     result = cv2.VideoWriter('filename.avi',cv2.VideoWriter_fourcc(*'MJPG'), 10, (1088, 608))
     id_img = 0
 
@@ -285,18 +285,20 @@ def predict_group(opt):
 
     while cap.isOpened():
         ret, frame = cap.read()
-
         if not ret:
             break
 
-        frame = cv2.resize(frame, (1088, 608))
+        # frame = cv2.resize(frame, (1088, 608))
+        frame = cv2.resize(frame, (opt.input_width, opt.input_height))
         frame = predict_image(opt, model, group_model, frame)
         #cv2.imshow("frame", frame)
-        #result.write(frame)
-        cv2.imwrite("result_test/{}.png".format(id_img), frame)
+        result.write(frame)
+        print(f"Writting to disk {opt.input_width}x{opt.input_height}")
+        cv2.imwrite("uetvideo_result/{}.png".format(id_img), frame)
         id_img += 1
         if cv2.waitKey(1) == ord('q'):
             break
+        exit()
 
 if __name__=="__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'

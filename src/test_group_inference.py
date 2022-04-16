@@ -57,7 +57,13 @@ def merge_outputs(opt, detections):
     return results
 
 # Clustering algorithm: ["connected_component", "graph_cut"]
-def clustering(ids, embeds, group_model, link_threshold=0.5, clustering_algorithm="connected_component", highly_connected_rate=0.3):
+def clustering(ids, 
+            embeds, 
+            group_model, 
+            link_threshold=0.5, 
+            clustering_algorithm="connected_component", 
+            highly_connected_rate=0.3,
+            return_cluster_original_ids=True):
     
     idx1 = []
     idx2 = []
@@ -143,8 +149,6 @@ def clustering(ids, embeds, group_model, link_threshold=0.5, clustering_algorith
     for label_ in unique_label:
         res.append(list(np.array(ids)[labels==label_]))
 
-    # import IPython
-    # IPython.embed()
     return res, graph
     # res: list of group. Example: [[1,2,4], [3,5,6], ...]
     # graph: adjacent matrix. Example: [[0,1,0], [1,0,1], [1,0,0]]
@@ -179,7 +183,8 @@ COLORS = [
     (192,0,192),
     (0,192,192),
     (0,0,192)
-]
+]*100
+
 def save_group_test(ids, fformations, dets, img, file_path, pred_graph, gt_cluster, gt_boxes, show_gt_boxes=True, show_group_boxes=True, show_group_links=True):
     id_dict = dict()
 
@@ -347,6 +352,8 @@ def test_group(
 
         # id_feature = id_feature.squeeze(0)
         id_feature = id_feature.cpu().numpy()
+        print("Detections: ", detections.shape)
+        print("id_feature: ", id_feature.shape)
 
 
         # Compute average precision for each sample
@@ -359,8 +366,12 @@ def test_group(
             embeds = id_feature[si]
             fformation_index = fformation_indexs[si]
             dets = dets.unsqueeze(0)
+            print("dets: ", dets.shape)
             dets = post_process(opt, dets, meta)
             dets = merge_outputs(opt, [dets])[1]
+            print("dets: ", dets.shape)
+            print("embeds: ", embeds.shape)
+            #exit()
 
             #remain_inds = dets[:, 4] > opt.det_thres
             #dets = dets[remain_inds]
@@ -408,6 +419,7 @@ def test_group(
                 '''
 
                 detected = [] # List of ground truth object id that is detected
+                high_conf_detected = [] # List of detected object id that have high confidence score
                 matched = [] # List of dets id
                 for i, (*pred_bbox, conf) in enumerate(dets):
                     obj_pred = 0
@@ -423,16 +435,28 @@ def test_group(
                         matched.append(i)
                     else:
                         correct.append(0)
+                    if conf > opt.detection_threshold:
+                        high_conf_detected.append(i)
                 
                 matched_embeds = embeds[matched]
                 matched_dets = dets[matched]
+                # matched_embeds = embeds[high_conf_detected]
+                # matched_dets = dets[high_conf_detected]
+
+                print(matched_embeds.shape)
+                print("matched_dets: ", matched_dets.shape)
+                # exit()
                 list_detected = [int(i) for i in detected]
+                
                 # print("MATCHED", matched)
                 # print("LIST DETECTED", list_detected)
                 # print("MATCHED EMBEDES", matched_embeds.shape)
                 # print("DETS", dets.shape)
                 # print("MATCHED DETS", matched_dets.shape)
-                cluster, graph = clustering(list_detected, matched_embeds, group_model, link_threshold=opt.eval_link_threshold, clustering_algorithm=opt.eval_clustering_algorithm, highly_connected_rate=opt.eval_highly_connected_rate)
+                
+                # cluster, graph = clustering(list_detected, matched_embeds, group_model, link_threshold=opt.eval_link_threshold, clustering_algorithm=opt.eval_clustering_algorithm, highly_connected_rate=opt.eval_highly_connected_rate)
+                cluster, graph = clustering(high_conf_detected, embeds[high_conf_detected], group_model, link_threshold=opt.eval_link_threshold, clustering_algorithm=opt.eval_clustering_algorithm, highly_connected_rate=opt.eval_highly_connected_rate, return_cluster_original_ids=False)
+                
                 pred_fformation_indexs.append(cluster)
                 if save_result:
                     path = paths[si]
@@ -440,11 +464,27 @@ def test_group(
                     id_dir += 1
                     gt_cluster = [fformation_index[k] for k in fformation_index]
                     # print("GT CLUSTER", gt_cluster)
-                    f1, _, _ = compute_f1_score_group([cluster], [gt_cluster], ratio=opt.eval_group_ratio)
+                    if cluster == []:
+                        print("No cluster id detected")
+                        f1 = 0
+                    else:
+                        f1, _, _ = compute_f1_score_group([cluster], [gt_cluster], ratio=opt.eval_group_ratio)
                     if f1 <= eval_dump_maxf1:
                         path = "{}/{}".format(path_saving_dir, f"{f1}F1_{os.path.basename(path)}")
                         print(f"F1={f1}. Saving error image to {path}")
-                        save_group_test(list_detected, cluster, matched_dets, img, path, pred_graph=graph, gt_boxes=target_boxes, gt_cluster=gt_cluster, show_group_boxes=opt.eval_show_group_boxes, show_group_links=opt.eval_show_group_links)
+                        # save_group_test(list_detected, cluster, matched_dets, img, path, pred_graph=graph, gt_boxes=target_boxes, gt_cluster=gt_cluster, show_group_boxes=opt.eval_show_group_boxes, show_group_links=opt.eval_show_group_links)
+                        save_group_test(high_conf_detected, cluster, dets[high_conf_detected], img, path, pred_graph=graph, gt_boxes=target_boxes, gt_cluster=gt_cluster, show_gt_boxes= False, show_group_boxes=opt.eval_show_group_boxes, show_group_links=opt.eval_show_group_links)
+                        # save_group_test(high_conf_detected, 
+                        #                 [[i] for i in high_conf_detected], 
+                        #                 dets[high_conf_detected], 
+                        #                 img, 
+                        #                 path, 
+                        #                 pred_graph=[[0 for i in range(len(high_conf_detected))] for j in range(len(high_conf_detected))], 
+                        #                 gt_boxes=target_boxes, 
+                        #                 gt_cluster=gt_cluster, 
+                        #                 show_gt_boxes=False,
+                        #                 show_group_boxes=True, 
+                        #                 show_group_links=False)
 
             # Compute Average Precision (AP) per class
             AP, AP_class, R, P = ap_per_class(tp=correct,
@@ -489,3 +529,4 @@ if __name__ == '__main__':
     opt = opts().init()
     with torch.no_grad():
         map = test_group(opt, batch_size=opt.batch_size, save_result=opt.eval_save, eval_dump_maxf1=opt.eval_dump_maxf1)
+
