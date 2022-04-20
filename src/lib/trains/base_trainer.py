@@ -8,6 +8,7 @@ from progress.bar import Bar
 from models.data_parallel import DataParallel
 from utils.utils import AverageMeter
 
+import wandb
 
 class ModleWithLoss(torch.nn.Module):
   def __init__(self, model, loss):
@@ -42,7 +43,7 @@ class BaseTrainer(object):
         if isinstance(v, torch.Tensor):
           state[k] = v.to(device=device, non_blocking=True)
 
-  def run_epoch(self, phase, epoch, data_loader):
+  def run_epoch(self, phase, epoch, data_loader, fold=0):
     model_with_loss = self.model_with_loss
     if phase == 'train':
       model_with_loss.train()
@@ -94,6 +95,8 @@ class BaseTrainer(object):
       
       if opt.test:
         self.save_result(output, batch, results)
+
+      wandb.log({f"loss/train-fold{fold}": loss})
       del output, loss, loss_stats, batch
     
     bar.finish()
@@ -114,5 +117,5 @@ class BaseTrainer(object):
   def val(self, epoch, data_loader):
     return self.run_epoch('val', epoch, data_loader)
 
-  def train(self, epoch, data_loader):
-    return self.run_epoch('train', epoch, data_loader)
+  def train(self, epoch, data_loader, fold=0):
+    return self.run_epoch('train', epoch, data_loader, fold=fold)

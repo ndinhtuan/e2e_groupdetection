@@ -15,12 +15,11 @@ class opts(object):
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
     self.parser.add_argument('--test_video_path', type=str, default="/data/tuannd/fformation/stream/output.avi")
-    self.parser.add_argument('--load_model', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/model_best.pth',
-                             #help='path to pretrained model')
-    #self.parser.add_argument('--load_model', default='',
-                             help='path to pretrained model')
-    self.parser.add_argument('--load_model_group', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_best.pth',
-                             help='path to pretrained group model')
+    self.parser.add_argument('--load_model', default='/home/giangh/tungch/00_fformation/e2e_groupdetection/models/crowdhuman_dla34.pth',                             help='path to pretrained model for inference')
+    self.parser.add_argument('--load_model_group', default='/data/tuannd/fformation/end2end/end2end/exp/group/crowdhuman_dla34/group_model_best.pth', help='path to pretrained group model for inference')
+    self.parser.add_argument('--load_pretrained_model', default='', help='path to pretrained model for training')
+    self.parser.add_argument('--load_pretrained_model_group', default='', help='path to pretrained group model for training')
+
     self.parser.add_argument('--resume', action='store_true',
                              help='resume an experiment. '
                                   'Reloaded the optimizer parameter and '
@@ -172,10 +171,11 @@ class opts(object):
     """
     Custom arguments
     """
+    self.parser.add_argument("--kfold", help="Do kfold training and evaluating on the dataset", type=int)
     self.parser.add_argument("--input_width", help="Image input width", type=int, default=1088)
     self.parser.add_argument("--input_height", help="Image input height", type=int, default=608)
     self.parser.add_argument("--detection_threshold", help="Threshold for accepting a bounding box detection", type=float, default=0.1)
-    self.parser.add_argument("--eval_save", help="save evaluated image to disk", type=bool, default=True)
+    self.parser.add_argument("--eval_save_path", help="save evaluated image to disk", type=str, default="eval_save_dir")
     self.parser.add_argument("--eval_dump_maxf1", help="threshold to dump evaluated image to disk", type=float, default=1.00)
     self.parser.add_argument("--eval_group_ratio", help="ratio to evaluate group f1", type=float, default=2/3)
     self.parser.add_argument("--eval_show_group_boxes", help="visualize ground truth links between items in fformation", default=True)

@@ -559,7 +559,6 @@ class DetDataset(LoadImagesAndLabels):  # for training
         if os.path.isfile(label_path):
             # labels0 = np.loadtxt(label_path, dtype=np.float32).reshape(-1, 6)
             labels0 = np.loadtxt(label_path, dtype=np.float32)
-            print("labels0: ", labels0, labels0.shape)
             labels0 = labels0.reshape(-1, 23)[:,:6]
 
 

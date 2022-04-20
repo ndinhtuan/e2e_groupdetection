@@ -294,6 +294,7 @@ def predict_group(opt):
         #cv2.imshow("frame", frame)
         result.write(frame)
         print(f"Writting to disk {opt.input_width}x{opt.input_height}")
+        os.makedirs("uetvideo_result", exist_ok=True)
         cv2.imwrite("uetvideo_result/{}.png".format(id_img), frame)
         id_img += 1
         if cv2.waitKey(1) == ord('q'):
