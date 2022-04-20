@@ -187,8 +187,6 @@ def main(opt):
             print(f"FOLD {fold}")
             print("-"*10)
             print(train_ids, len(train_ids))
-            train_ids = train_ids[:5]
-            test_ids = test_ids[:5]
             
             train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
             test_subsampler = torch.utils.data.SubsetRandomSampler(test_ids)
